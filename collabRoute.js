@@ -23,19 +23,33 @@ var PORT = 8000;
 var HOST = '192.168.1.131';
 
 var app = express();
-app.configure(function(){
+app.configure(function() {
     app.use(app.router);
 });
 
-var server = https.createServer(option , app).listen(PORT, HOST);
-console.log('Collab Server is running on %s:%s',HOST,PORT);
+var connection = mysql.createConnection({
+    host: '192.168.1.131',
+    user: 'raffaele',
+    password: 'pluto',
+    database: 'collab_route'
+});
 
-app.get('/fava/:id' , function(req, res){
-    res.type(' application/json');
-    if(req.params.id > 5)
-        res.json('id maggiore di 5');
-    else
-        res.json('id minore uguale a 5');
-    
-    console.log('somebody get something by the way');
+var server = https.createServer(option, app).listen(PORT, HOST);
+console.log('Collab Server is running on %s:%s', HOST, PORT);
+
+connection.connect();
+
+app.get('/users', function(req, res) {
+    res.type('application/json');
+    connection.query('SELECT * FROM user', function(err, docs) {
+        res.json(docs);
+    });
+    var currentdate = new Date();
+    var datetime = "[" + currentdate.getDate() + "/"
+            + (currentdate.getMonth() + 1) + "/"
+            + currentdate.getFullYear() + " @ "
+            + currentdate.getHours() + ":"
+            + currentdate.getMinutes() + ":"
+            + currentdate.getSeconds()+"]";
+    console.log(datetime+' somebody get user list');
 });
