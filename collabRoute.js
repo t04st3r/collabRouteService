@@ -14,20 +14,21 @@ var mysql = require('mysql');
 var crypto = require('crypto');//md5 for creating token
 var tokenSeed = 'itopinonavevanonipoti';//seed for token generator
 
-//load config data from external file
-var conf = fs.readFileSync('/home/ubuntu/collabRoute/collabRoute.conf', 'utf8').split('\n');
+//load config data from external JSON file
+var confFile = fs.readFileSync('/home/ubuntu/collabRoute/collabRoute.json', 'utf8');
+var conf = JSON.parse(confFile);
 
 //load 2048 bit SSL/TSL key and his relative signed certificate
-var collabKey = fs.readFileSync(conf[0]);
-var collabCert = fs.readFileSync(conf[1]);
+var collabKey = fs.readFileSync(conf.keyPath);
+var collabCert = fs.readFileSync(conf.certPath);
 
 var option = {
     key: collabKey,
     cert: collabCert
 };
 
-var PORT = conf[2];
-var HOST = conf[3];
+var PORT = conf.serverPort;
+var HOST = conf.serverHostname;
 
 var app = express();
 app.configure(function() {
@@ -35,10 +36,10 @@ app.configure(function() {
 });
 
 var connection = mysql.createConnection({
-    host: conf[4],
-    user: conf[5],
-    password: conf[6],
-    database: conf[7]
+    host: conf.dbHostname,
+    user: conf.dbUser,
+    password: conf.dbPassword,
+    database: conf.dbName
 });
 
 connection.connect();
@@ -54,7 +55,7 @@ app.get('/auth/:mail/:pass', function(req, res) {
         //console.log(result[0].token + " " + mail + " " + pass); //used for debugging 
         res.type('application/json');
         if (err) {
-            res.json({result: 'DATABASE ERROR'})
+            res.json({result: 'DATABASE ERROR'});
             eventLog('[ Database error on login from ' + ip + ' mail: ' + mail + ' password: ' + pass + ' ]');
         }
         else if (result === 'undefined' || result.length === 0) {
@@ -67,7 +68,7 @@ app.get('/auth/:mail/:pass', function(req, res) {
                 connection.query("UPDATE user SET token = '" + hash + "' WHERE id = " + result[0].id);
                 eventLog('[ Token updated for user: '+result[0].name+' id: '+result[0].id+' ]');
             }
-            eventLog('[ user '+result[0].name+' id: '+result[0].id+' IP: '' successfully logged in')
+            eventLog('[ user '+result[0].name+' id: '+result[0].id+' IP: '+ip+' successfully logged in ]');
             res.json({result: 'OK', token: hash, id: result[0].id, name: result[0].name});
         }
     });
