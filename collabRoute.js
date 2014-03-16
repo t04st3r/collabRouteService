@@ -12,11 +12,11 @@ var express = require('express');
 var https = require('https');
 var mysql = require('mysql');
 var crypto = require('crypto');//md5 for creating token
-var tokenSeed = 'itopinonavevanonipoti';//seed for token generator
 
 //load config data from external JSON file
 var confFile = fs.readFileSync('/home/ubuntu/collabRoute/collabRoute.json', 'utf8');
 var conf = JSON.parse(confFile);
+var tokenSeed = conf.tokenSeed; //seed for token generator
 
 //load 2048 bit SSL/TSL key and his relative signed certificate
 var collabKey = fs.readFileSync(conf.keyPath);
