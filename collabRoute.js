@@ -37,9 +37,11 @@ app.configure(function() {
 
 var connection = mysql.createConnection({
     host: conf.dbHostname,
+    port: conf.dbPort,
     user: conf.dbUser,
     password: conf.dbPassword,
     database: conf.dbName
+    
 });
 
 connection.connect();
