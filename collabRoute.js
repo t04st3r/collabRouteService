@@ -11,7 +11,10 @@ var fs = require('fs');
 var express = require('express');
 var https = require('https');
 var mysql = require('mysql');
-var crypto = require('crypto');//md5 for creating token
+var crypto = require('crypto'); //md5 for creating token
+var nodemailer = require('nodemailer');
+var login = require("./login.js");
+var registration = require("./registration.js");
 
 //load config data from external JSON file
 var confFile = fs.readFileSync('/home/ubuntu/collabRoute/collabRoute.json', 'utf8');
@@ -41,40 +44,37 @@ var connection = mysql.createConnection({
     user: conf.dbUser,
     password: conf.dbPassword,
     database: conf.dbName
-    
+
 });
 
 connection.connect();
+
+var mailConfig = {
+    service : conf.mailService,
+    auth : {
+        user : conf.mailUser,
+        pass : conf.mailPass
+    }
+};
+
+var transport = nodemailer.createTransport("SMTP" , mailConfig);
 
 var server = https.createServer(option, app).listen(PORT, HOST);
 console.log('Collab Server is running on %s:%s', HOST, PORT);
 
 app.get('/auth/:mail/:pass', function(req, res) {
-    var mail = req.params.mail;
-    var pass = req.params.pass;
-    var ip = req.connection.remoteAddress;
-    connection.query('SELECT id, name, token FROM user WHERE password = ' + connection.escape(pass) + ' AND email = ' + connection.escape(mail), function(err, result) {
-        //console.log(result[0].token + " " + mail + " " + pass); //used for debugging 
-        res.type('application/json');
-        if (err) {
-            res.json({result: 'DATABASE ERROR'});
-            eventLog('[ Database error on login from ' + ip + ' mail: ' + mail + ' password: ' + pass + ' ]');
-        }
-        else if (result === 'undefined' || result.length === 0) {
-            res.json({result: 'AUTH FAILED'});
-            eventLog('[ Authentication failed from ' + ip + ' mail: ' + mail + ' password: ' + pass + ' ]');
-        }
-        else {
-            var hash = crypto.createHash('md5').update(tokenSeed + mail + pass).digest('hex');
-            if (result[0].token !== hash){
-                connection.query("UPDATE user SET token = '" + hash + "' WHERE id = " + result[0].id);
-                eventLog('[ Token updated for user: '+result[0].name+' id: '+result[0].id+' ]');
-            }
-            eventLog('[ user '+result[0].name+' id: '+result[0].id+' IP: '+ip+' successfully logged in ]');
-            res.json({result: 'OK', token: hash, id: result[0].id, name: result[0].name});
-        }
-    });
+    login.doLogin(res, req, crypto, connection, tokenSeed, eventLog);
 });
+
+app.post('/add/user/:name/:mail/:pass', function(req, res) {
+    var code = Math.floor((Math.random()*10000)+1);
+    registration.sendRegistrationMail(req.params.name, req.params.mail,req.connection.remoteAddress, code, transport, eventLog);
+    //TODO write on db
+    res.type('application/json');
+    res.json({send : true});
+    
+});
+
 
 app.get('/users', function(req, res) {
     res.type('application/json');
@@ -91,19 +91,6 @@ app.get('/users', function(req, res) {
     console.log(datetime + ' somebody get user list');
 });
 
-/* function isLogged(connection , token){
- if(connection !== null){
- try{
- connection.query('SELECT id FROM user where token ='+connection.escape(token), 
- function(err , result){
- console.log(result+' '+err);
- 
- });
- }catch(err){
- console.log(err);
- }
- } */
-//format a string event with currenta date/time for server console.log
 function eventLog(event) {
     var currentdate = new Date();
     var datetime = "[" + currentdate.getDate() + "/"
@@ -114,3 +101,27 @@ function eventLog(event) {
             + currentdate.getSeconds() + "]";
     console.log(datetime + ' ' + event);
 }
+
+
+    function checkHeaderToken(header , req) {
+        if (!header.hasOwnProperty(token) || !header.hasOwnProperty(id)) {
+            return false;
+        }
+        var ip = req.connection.remoteAddress;
+        connection.query("SELECT token FROM user WHERE id =" + connection.escape(header.id), function(err, result) {
+            if (err) {
+                res.json({result: 'DATABASE_ERROR'});
+                eventLog('[ Database error on header check from ' + ip + ' id: ' + header.id + ' ]');
+                return false;
+            }
+            if (result.length === 0 || result[0].token !== header.token) {
+                res.json({result: 'AUTH_FAILED'});
+                eventLog('[ Authentication failed from ' + ip + ' id: ' + header.id + ' using token: ' + header.token + ' ]');
+                return false;
+            }
+            return true;
+        });
+
+    }
+   
+
