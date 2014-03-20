@@ -34,7 +34,10 @@ var PORT = conf.serverPort;
 var HOST = conf.serverHostname;
 
 var app = express();
+
 app.configure(function() {
+    app.use(express.urlencoded());
+    app.use(express.json());
     app.use(app.router);
 });
 
@@ -50,14 +53,14 @@ var connection = mysql.createConnection({
 connection.connect();
 
 var mailConfig = {
-    service : conf.mailService,
-    auth : {
-        user : conf.mailUser,
-        pass : conf.mailPass
+    service: conf.mailService,
+    auth: {
+        user: conf.mailUser,
+        pass: conf.mailPass
     }
 };
 
-var transport = nodemailer.createTransport("SMTP" , mailConfig);
+var transport = nodemailer.createTransport("SMTP", mailConfig);
 
 var server = https.createServer(option, app).listen(PORT, HOST);
 console.log('Collab Server is running on %s:%s', HOST, PORT);
@@ -66,13 +69,8 @@ app.get('/auth/:mail/:pass', function(req, res) {
     login.doLogin(res, req, crypto, connection, tokenSeed, eventLog);
 });
 
-app.post('/add/user/:name/:mail/:pass', function(req, res) {
-    var code = Math.floor((Math.random()*10000)+1);
-    registration.sendRegistrationMail(req.params.name, req.params.mail,req.connection.remoteAddress, code, transport, eventLog);
-    //TODO write on db
-    res.type('application/json');
-    res.json({send : true});
-    
+app.post('/add/user/', function(req, res) {
+    registration.checkSendRegister(req, res, connection, eventLog, transport);
 });
 
 
@@ -103,25 +101,25 @@ function eventLog(event) {
 }
 
 
-    function checkHeaderToken(header , req) {
-        if (!header.hasOwnProperty(token) || !header.hasOwnProperty(id)) {
+function checkHeaderToken(header, req) {
+    if (!header.hasOwnProperty(token) || !header.hasOwnProperty(id)) {
+        return false;
+    }
+    var ip = req.connection.remoteAddress;
+    connection.query("SELECT token FROM user WHERE id =" + connection.escape(header.id), function(err, result) {
+        if (err) {
+            res.json({result: 'DATABASE_ERROR'});
+            eventLog('[ Database error on header check from ' + ip + ' id: ' + header.id + ' ]');
             return false;
         }
-        var ip = req.connection.remoteAddress;
-        connection.query("SELECT token FROM user WHERE id =" + connection.escape(header.id), function(err, result) {
-            if (err) {
-                res.json({result: 'DATABASE_ERROR'});
-                eventLog('[ Database error on header check from ' + ip + ' id: ' + header.id + ' ]');
-                return false;
-            }
-            if (result.length === 0 || result[0].token !== header.token) {
-                res.json({result: 'AUTH_FAILED'});
-                eventLog('[ Authentication failed from ' + ip + ' id: ' + header.id + ' using token: ' + header.token + ' ]');
-                return false;
-            }
-            return true;
-        });
+        if (result.length === 0 || result[0].token !== header.token) {
+            res.json({result: 'AUTH_FAILED'});
+            eventLog('[ Authentication failed from ' + ip + ' id: ' + header.id + ' using token: ' + header.token + ' ]');
+            return false;
+        }
+        return true;
+    });
 
-    }
-   
+}
+
 
