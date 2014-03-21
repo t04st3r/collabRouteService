@@ -40,12 +40,12 @@ function checkSendRegister(req, res, connection, eventLog, transport) {
                             res.json({result: 'EMAIL_SEND_ERROR'});
                             connection.query('DELETE FROM user WHERE email = ' + connection.escape(mailAddress), function(err, res) {
                                 if (err) {
-                                    eventLog('Possible DB data inconsistency on delete new user with email address '+ mailAddress+' please check it manually error: '+err);
+                                    eventLog('Possible DB data inconsistency on delete new user with email address ' + mailAddress + ' please check it manually error: ' + err);
                                 }
                             });
-                        }else{
-                             eventLog("Confirmation mail sent to new user: " + name + " (" + ip + "): " + response.message);
-                             res.json({result: 'OK' , code : code});
+                        } else {
+                            eventLog("Confirmation mail sent to new user: " + name + " (" + ip + "): " + response.message);
+                            res.json({result: 'OK', code: code});
                         }
                     });
                 }
@@ -53,5 +53,34 @@ function checkSendRegister(req, res, connection, eventLog, transport) {
         }
     });
 }
+
+function confirmRegistration(req, res, connection, eventLog) {
+    var mail = req.body.mail;
+    eventLog("MAIL: "+mail);
+    var ip = req.connection.remoteAddress;
+    res.type('application/json');
+    connection.query('SELECT confirmed FROM user WHERE email = ' + connection.escape(mail), function(err, result) {
+        if (err) {
+            eventLog('Database Error on checking new user with mail ' + mail + ' (' + ip + ') error: '+err);
+            res.json({result: 'DATABASE_ERROR'});
+        } else {
+            if (result.length === 0) {
+                eventLog('User not found while confirm registration with mail ' + mail + ' (' + ip + ')');
+                res.json({result: 'EMAIL_NOT_FOUND'});
+            } else {
+                connection.query('UPDATE user SET confirmed = 1 WHERE email = ' + connection.escape(mail), function(err) {
+                    if (err) {
+                        eventLog('Database Error on confirm new user with mail ' + mail + ' (' + ip + ') error: '+err);
+                        res.json({result: 'DATABASE_ERROR'});
+                    } else {
+                        eventLog("New User with email " + mail + " (" + ip + ") successfully confirm registration");
+                        res.json({result: 'OK'});
+                    }
+                });
+            }
+        }
+    });
+}
 module.exports.checkSendRegister = checkSendRegister;
+module.exports.confirmRegistration = confirmRegistration;
 

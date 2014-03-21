@@ -73,20 +73,8 @@ app.post('/add/user/', function(req, res) {
     registration.checkSendRegister(req, res, connection, eventLog, transport);
 });
 
-
-app.get('/users', function(req, res) {
-    res.type('application/json');
-    connection.query('SELECT * FROM user', function(err, docs) {
-        res.json(docs);
-    });
-    var currentdate = new Date();
-    var datetime = "[" + currentdate.getDate() + "/"
-            + (currentdate.getMonth() + 1) + "/"
-            + currentdate.getFullYear() + " @ "
-            + currentdate.getHours() + ":"
-            + currentdate.getMinutes() + ":"
-            + currentdate.getSeconds() + "]";
-    console.log(datetime + ' somebody get user list');
+app.post('/confirm/user', function(req, res){
+    registration.confirmRegistration(req, res, connection, eventLog);
 });
 
 function eventLog(event) {
@@ -121,5 +109,3 @@ function checkHeaderToken(header, req) {
     });
 
 }
-
-
