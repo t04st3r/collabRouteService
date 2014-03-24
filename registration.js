@@ -11,17 +11,17 @@ function checkSendRegister(req, res, connection, eventLog, transport) {
     connection.query('SELECT id FROM user WHERE email = ' + connection.escape(mailAddress), function(err, result) {
         res.type('application/json');
         if (err) {
-            res.json({result: 'DATABASE_ERROR'});
+            res.json({type: 'request', result: 'DATABASE_ERROR'});
             eventLog('[ Database error on email checking request from ' + ip + ' mail: ' + mailAddress + ' ]');
         }
         else if (result.length >= 1) {
-            res.json({result: 'EMAIL_EXISTS_ERROR'});
+            res.json({type: 'request', result: 'EMAIL_EXISTS_ERROR'});
             eventLog('[ Mail address already in the DB  request from ' + ip + ' mail: ' + mailAddress + ' ]');
         }
         else if (result.length === 0) {
             connection.query('INSERT INTO user (email, name, password) VALUES (' + connection.escape(mailAddress) + ', ' + connection.escape(name) + ', ' + connection.escape(pass) + ')', function(err, insertResult) {
                 if (err) {
-                    res.json({result: 'DATABASE_ERROR'});
+                    res.json({type: 'request', result: 'DATABASE_ERROR'});
                     eventLog('[ Database error on inserting new user from ' + ip + ' mail: ' + mailAddress + ' ]');
                 }
                 else {
@@ -37,7 +37,7 @@ function checkSendRegister(req, res, connection, eventLog, transport) {
                     transport.sendMail(mailOptions, function(err, response) {
                         if (err) {
                             eventLog(err);
-                            res.json({result: 'EMAIL_SEND_ERROR'});
+                            res.json({type: 'request', result: 'EMAIL_SEND_ERROR'});
                             connection.query('DELETE FROM user WHERE email = ' + connection.escape(mailAddress), function(err, res) {
                                 if (err) {
                                     eventLog('Possible DB data inconsistency on delete new user with email address ' + mailAddress + ' please check it manually error: ' + err);
@@ -45,7 +45,7 @@ function checkSendRegister(req, res, connection, eventLog, transport) {
                             });
                         } else {
                             eventLog("Confirmation mail sent to new user: " + name + " (" + ip + "): " + response.message);
-                            res.json({result: 'OK', code: code});
+                            res.json({type: 'request', result: 'OK', code: code});
                         }
                     });
                 }
@@ -62,19 +62,19 @@ function confirmRegistration(req, res, connection, eventLog) {
     connection.query('SELECT confirmed FROM user WHERE email = ' + connection.escape(mail), function(err, result) {
         if (err) {
             eventLog('Database Error on checking new user with mail ' + mail + ' (' + ip + ') error: '+err);
-            res.json({result: 'DATABASE_ERROR'});
+            res.json({type: 'confirm', result: 'DATABASE_ERROR'});
         } else {
             if (result.length === 0) {
                 eventLog('User not found while confirm registration with mail ' + mail + ' (' + ip + ')');
-                res.json({result: 'EMAIL_NOT_FOUND'});
+                res.json({type: 'confirm', result: 'EMAIL_NOT_FOUND'});
             } else {
                 connection.query('UPDATE user SET confirmed = 1 WHERE email = ' + connection.escape(mail), function(err) {
                     if (err) {
                         eventLog('Database Error on confirm new user with mail ' + mail + ' (' + ip + ') error: '+err);
-                        res.json({result: 'DATABASE_ERROR'});
+                        res.json({type: 'confirm', result: 'DATABASE_ERROR'});
                     } else {
                         eventLog("New User with email " + mail + " (" + ip + ") successfully confirm registration");
-                        res.json({result: 'OK'});
+                        res.json({type: 'confirm', result: 'OK'});
                     }
                 });
             }
@@ -83,4 +83,3 @@ function confirmRegistration(req, res, connection, eventLog) {
 }
 module.exports.checkSendRegister = checkSendRegister;
 module.exports.confirmRegistration = confirmRegistration;
-
