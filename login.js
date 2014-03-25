@@ -46,7 +46,7 @@ function doLogin(res, req, crypto, connection, tokenSeed, eventLog, transport) {
             eventLog('[ Token updated for user: ' + result[0].name + ' id: ' + result[0].id + ' ]');
         }
         eventLog('[ user ' + result[0].name + ' id: ' + result[0].id + ' IP: ' + ip + ' successfully logged in ]');
-        res.json({type: 'login', result: 'OK', token: hash, id: result[0].id, name: result[0].name});
+        res.json({type: 'login', result: 'OK', token: hash, id: result[0].id, name: result[0].name,  mail: mail});
     });
 }
 
