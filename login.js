@@ -8,7 +8,7 @@ function doLogin(res, req, crypto, connection, tokenSeed, eventLog) {
     var mail = req.params.mail;
     var pass = req.params.pass;
     var ip = req.connection.remoteAddress;
-    connection.query('SELECT id, name, token FROM user WHERE password = ' + connection.escape(pass) + ' AND email = ' + connection.escape(mail), function(err, result) {
+    connection.query('SELECT id, name, token, confirmed FROM user WHERE password = ' + connection.escape(pass) + ' AND email = ' + connection.escape(mail), function(err, result) {
         //console.log(result[0].token + " " + mail + " " + pass); //used for debugging 
         res.type('application/json');
         if (err) {
