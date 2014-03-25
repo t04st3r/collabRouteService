@@ -66,7 +66,7 @@ var server = https.createServer(option, app).listen(PORT, HOST);
 console.log('Collab Server is running on %s:%s', HOST, PORT);
 
 app.get('/auth/:mail/:pass', function(req, res) {
-    login.doLogin(res, req, crypto, connection, tokenSeed, eventLog);
+    login.doLogin(res, req, crypto, connection, tokenSeed, eventLog, transport);
 });
 
 app.post('/add/user/', function(req, res) {

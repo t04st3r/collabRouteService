@@ -60,7 +60,7 @@ function confirmRegistration(req, res, connection, eventLog) {
     var mail = req.body.mail;
     var ip = req.connection.remoteAddress;
     res.type('application/json');
-    connection.query('SELECT confirmed FROM user WHERE email = ' + connection.escape(mail), function(err, result) {
+    connection.query('SELECT confirmed FROM user WHERE email = ' + connection.escape(mail)+' AND confirmed = 0', function(err, result) {
         if (err) {
             eventLog('Database Error on checking new user with mail ' + mail + ' (' + ip + ') error: ' + err);
             res.json({type: 'confirm', result: 'DATABASE_ERROR'});
@@ -82,5 +82,6 @@ function confirmRegistration(req, res, connection, eventLog) {
         });
     });
 }
+
 module.exports.checkSendRegister = checkSendRegister;
 module.exports.confirmRegistration = confirmRegistration;
