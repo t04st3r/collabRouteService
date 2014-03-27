@@ -77,6 +77,17 @@ app.post('/confirm/user', function(req, res){
     registration.confirmRegistration(req, res, connection, eventLog);
 });
 
+app.get('/travels/' , function(req, res){
+    res.type('application/json')
+    checkHeaderToken(req, connection, function(returnValue){
+        if(!returnValue){
+           res.json({result: 'AUTH_FAILED'});
+           return;
+        }
+        res.json({result: 'OK'});
+    });
+});
+
 function eventLog(event) {
     var currentdate = new Date();
     var datetime = "[" + currentdate.getDate() + "/"
@@ -89,23 +100,28 @@ function eventLog(event) {
 }
 
 
-function checkHeaderToken(header, req) {
-    if (!header.hasOwnProperty(token) || !header.hasOwnProperty(id)) {
-        return false;
+function checkHeaderToken(req,  connection, callback) { //callback function return synchronously the result of the query
+    if (!req.headers.hasOwnProperty("token") || !req.headers.hasOwnProperty("id")) {
+        callback(false);
+        return;
     }
+    
     var ip = req.connection.remoteAddress;
-    connection.query("SELECT token FROM user WHERE id =" + connection.escape(header.id), function(err, result) {
+    var id = req.headers.id;
+    var token = req.headers.token;
+    
+    
+    connection.query("SELECT token FROM user WHERE id =" + connection.escape(id), function(err, result) {
         if (err) {
-            res.json({result: 'DATABASE_ERROR'});
-            eventLog('[ Database error on header check from ' + ip + ' id: ' + header.id + ' ]');
-            return false;
+            eventLog('[ Database error on header check from ' + ip + ' id: ' + id + ' ]');
+            callback(false);
+            return;
         }
-        if (result.length === 0 || result[0].token !== header.token) {
-            res.json({result: 'AUTH_FAILED'});
-            eventLog('[ Authentication failed from ' + ip + ' id: ' + header.id + ' using token: ' + header.token + ' ]');
-            return false;
+        if (result.length === 0 || result[0].token !== token) {
+            eventLog('[ Authentication failed from ' + ip + ' id: ' + id + ' using token: ' + token + ' ]');
+            callback(false);
+            return;
         }
-        return true;
+        callback(true);
     });
-
 }
