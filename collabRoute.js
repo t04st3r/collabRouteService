@@ -15,7 +15,7 @@ var crypto = require('crypto'); //md5 for creating token
 var nodemailer = require('nodemailer');
 var login = require("./login.js");
 var registration = require("./registration.js");
-
+var travelList = require("./travelList.js");
 //load config data from external JSON file
 var confFile = fs.readFileSync('/home/ubuntu/collabRoute/collabRoute.json', 'utf8');
 var conf = JSON.parse(confFile);
@@ -73,19 +73,20 @@ app.post('/add/user/', function(req, res) {
     registration.checkSendRegister(req, res, connection, eventLog, transport);
 });
 
-app.post('/confirm/user', function(req, res){
+app.post('/confirm/user', function(req, res) {
     registration.confirmRegistration(req, res, connection, eventLog);
 });
 
-app.get('/travels/' , function(req, res){
-    res.type('application/json')
-    checkHeaderToken(req, connection, function(returnValue){
-        if(!returnValue){
-           res.json({result: 'AUTH_FAILED'});
-           return;
+app.get('/travels/', function(req, res) {
+    res.type('application/json');
+    checkHeaderToken(req, connection, function(returnValue) {
+        if (!returnValue) {
+            res.json({result: 'AUTH_FAILED'});
+            return;
         }
-        res.json({result: 'OK'});
     });
+    travelList.sendTravelList(req, res, connection, eventLog);
+
 });
 
 function eventLog(event) {
@@ -100,17 +101,17 @@ function eventLog(event) {
 }
 
 
-function checkHeaderToken(req,  connection, callback) { //callback function return synchronously the result of the query
+function checkHeaderToken(req, connection, callback) { //callback function return synchronously the result of the query
     if (!req.headers.hasOwnProperty("token") || !req.headers.hasOwnProperty("id")) {
         callback(false);
         return;
     }
-    
+
     var ip = req.connection.remoteAddress;
     var id = req.headers.id;
     var token = req.headers.token;
-    
-    
+
+
     connection.query("SELECT token FROM user WHERE id =" + connection.escape(id), function(err, result) {
         if (err) {
             eventLog('[ Database error on header check from ' + ip + ' id: ' + id + ' ]');
