@@ -11,22 +11,21 @@ function sendTravelList(req, res, connection, eventLog) {
     var options = {sql: query, nestTables: true};
     connection.query(options, function(err, result) {
         if (err) {
-            res.json({type: 'list_request', result: 'DATABASE_ERROR', err: err});
+            res.json({type: 'adm_list_request', result: 'DATABASE_ERROR'});
             eventLog('[ Database error on travel list request from ' + ip + 'where id: ' + id + ' is admin ]');
             return;
         }
-        query = 'SELECT trip.id, trip.name, trip.description, trip.id_admin, user_adm.name AS adm_name, user.name AS user_name, user.id AS user_id FROM trip, user, user_trip, user AS user_adm WHERE user_adm.id = trip.id_admin AND trip.id = user_trip.id_trip AND user.id = user_trip.id_user AND trip.id = ANY (SELECT trip.id FROM trip, user_trip WHERE user_trip.id_trip = trip.id ANd user_trip.id_user =' + id + ')';
+        query = 'SELECT trip.id, trip.name, trip.description, trip.id_admin, user_adm.name AS adm_name, user.name AS user_name, user.id AS user_id FROM trip, user, user_trip, user AS user_adm WHERE user_adm.id = trip.id_admin AND trip.id = user_trip.id_trip AND user.id = user_trip.id_user AND user.id <> ' + connection.escape(id) + 'AND trip.id = ANY (SELECT trip.id FROM trip, user_trip WHERE user_trip.id_trip = trip.id ANd user_trip.id_user =' + connection.escape(id) + ')';
         options.sql = query;
         connection.query(options, function(err, rows) {
             if (err) {
-                res.json({type: 'list_request', result: 'DATABASE_ERROR', err: err});
+                res.json({type: 'mbr_list_request', result: 'DATABASE_ERROR'});
                 eventLog('[ Database error on travel list request from ' + ip + 'where id: ' + id + ' is a member ]');
                 return;
             }
             var len;
             if ((len = result.length) > 0) {
                 for (var i = 0; i < len; i++) {
-                    result[i].trip.isAdmin = true;
                     resultSet.push(result[i]);
                 }
             }
@@ -36,7 +35,7 @@ function sendTravelList(req, res, connection, eventLog) {
                 }
             }
             //dump(resultSet);
-            res.json(orderResult(resultSet));
+            res.json({type: "adm_mbr_list", result: "OK", array: orderResult(resultSet)});
         });
 
     });
@@ -70,4 +69,20 @@ function dump(obj) { //debug function
     console.log(JSON.stringify(obj));
 }
 
+function getRoutes(req, res, connection, eventLog){
+    var id = req.params.id;
+    var ip = req.connection.remoteAddress;
+    var query = 'SELECT id, address, latitude, longitude FROM route WHERE id_trip = '+connection.escape(id);
+    var options = {sql: query, nestTables: false};
+    connection.query(options, function(err, result){
+        if(err){
+            res.json({type: 'routes_request', result: 'DATABASE_ERROR'});
+            eventLog('[ Database error on route list request from ' + ip + 'using trip id: ' + id + ' ]');
+            return;
+        }
+        res.json({type: "routes_list", result: "OK", array: result});
+    });
+    
+}
 module.exports.sendTravelList = sendTravelList;
+module.exports.getRoutes = getRoutes;

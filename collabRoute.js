@@ -84,9 +84,19 @@ app.get('/travels/', function(req, res) {
             res.json({result: 'AUTH_FAILED'});
             return;
         }
+        travelList.sendTravelList(req, res, connection, eventLog);
     });
-    travelList.sendTravelList(req, res, connection, eventLog);
+});
 
+app.get('/routes/:id', function(req, res) {
+    res.type('application/json');
+    checkHeaderToken(req, connection, function(returnValue) {
+        if (!returnValue) {
+            res.json({result: 'AUTH_FAILED'});
+            return;
+        }
+        travelList.getRoutes(req, res, connection, eventLog);
+    });
 });
 
 function eventLog(event) {
