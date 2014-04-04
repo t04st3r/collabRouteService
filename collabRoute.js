@@ -19,7 +19,6 @@ var travelList = require("./travelList.js");
 //load config data from external JSON file
 var confFile = fs.readFileSync('/home/ubuntu/collabRoute/collabRoute.json', 'utf8');
 var conf = JSON.parse(confFile);
-var tokenSeed = conf.tokenSeed; //seed for token generator
 
 //load 2048 bit SSL/TSL key and his relative signed certificate
 var collabKey = fs.readFileSync(conf.keyPath);
@@ -66,7 +65,7 @@ var server = https.createServer(option, app).listen(PORT, HOST);
 console.log('Collab Server is running on %s:%s', HOST, PORT);
 
 app.get('/auth/:mail/:pass', function(req, res) {
-    login.doLogin(res, req, crypto, connection, tokenSeed, eventLog, transport);
+    login.doLogin(res, req, crypto, connection, eventLog, transport);
 });
 
 app.post('/add/user/', function(req, res) {
@@ -82,6 +81,7 @@ app.get('/travels/', function(req, res) {
     checkHeaderToken(req, connection, function(returnValue) {
         if (!returnValue) {
             res.json({result: 'AUTH_FAILED'});
+            eventLog({result: 'AUTH_FAILED'});
             return;
         }
         travelList.sendTravelList(req, res, connection, eventLog);

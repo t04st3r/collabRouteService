@@ -35,18 +35,19 @@ function sendTravelList(req, res, connection, eventLog) {
                 }
             }
             //dump(resultSet);
-            res.json({type: "adm_mbr_list", result: "OK", array: orderResult(resultSet)});
+            resultSet =  orderResult(resultSet);
+            res.json({type: "adm_mbr_list", result: "OK", array: resultSet});
         });
 
     });
 
 }
 function orderResult(result) {
-    var current; //id index of a existing travel in toReturn array 
+    var current; //id index of a existing travel in orderedTravels array 
     var id = [];//travel id array 
-    var toReturn = [];
+    var orderedTravels = [];
     for (var key in result) {
-        if ((current = id.indexOf(result[key].trip.id)) === -1) { //if the travel is not present in toReturn
+        if ((current = id.indexOf(result[key].trip.id)) === -1) { //if the travel is not present in orderedTravels
             id.push(result[key].trip.id);
             var newTrip = result[key].trip;
             if (result[key].trip.hasOwnProperty('id_admin')) { //if is a travel where the user is NOT the admin set adm_name as trip property
@@ -54,15 +55,15 @@ function orderResult(result) {
             }
             newTrip.user = [];
             newTrip.user.push(result[key].user);//{id : result[key].user.user_id , name: result[key].user.user_name})
-            toReturn.push(newTrip);
+            orderedTravels.push(newTrip);
         } else {
-            var trip = toReturn.filter(function(v) {
+            var trip = orderedTravels.filter(function(v) {
                 return v["id"] === id[current];
             }); //filter object with given id
             trip["0"].user.push(result[key].user);//push new user
         }
     }
-    return toReturn;
+    return orderedTravels;
 }
 
 function dump(obj) { //debug function
@@ -80,6 +81,7 @@ function getRoutes(req, res, connection, eventLog){
             eventLog('[ Database error on route list request from ' + ip + 'using trip id: ' + id + ' ]');
             return;
         }
+        dump(result);
         res.json({type: "routes_list", result: "OK", array: result});
     });
     

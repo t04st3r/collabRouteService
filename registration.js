@@ -22,6 +22,7 @@ function checkSendRegister(req, res, connection, eventLog, transport) {
         }
         if (result.length === 0) {
             var code = Math.floor((Math.random() * 10000) + 1);
+            code = code < 1000 ? code + 1000 : code;
             connection.query('INSERT INTO user (email, name, password, code) VALUES (' + connection.escape(mailAddress) + ', ' + connection.escape(name) + ', ' + connection.escape(pass) + ',' + code + ')', function(err) {
                 if (err) {
                     res.json({type: 'request', result: 'DATABASE_ERROR'});
