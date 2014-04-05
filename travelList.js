@@ -35,8 +35,7 @@ function sendTravelList(req, res, connection, eventLog) {
                 }
             }
             //dump(resultSet);
-            resultSet =  orderResult(resultSet);
-            res.json({type: "adm_mbr_list", result: "OK", array: resultSet});
+            res.json({type: "adm_mbr_list", result: "OK", array: orderResult(resultSet)});
         });
 
     });
@@ -81,7 +80,7 @@ function getRoutes(req, res, connection, eventLog){
             eventLog('[ Database error on route list request from ' + ip + 'using trip id: ' + id + ' ]');
             return;
         }
-        dump(result);
+        //dump(result);
         res.json({type: "routes_list", result: "OK", array: result});
     });
     

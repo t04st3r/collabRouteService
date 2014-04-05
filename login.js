@@ -38,7 +38,7 @@ function doLogin(res, req, crypto, connection, eventLog, transport) {
         }
         var hash = crypto.createHash('md5').update(Math.random().toString()).digest('hex');
         connection.query("UPDATE user SET token = '" + hash + "' WHERE id = " + result[0].id);
-        eventLog('[ Token updated for user: ' + result[0].name + ' id: ' + result[0].id + ' ip: ' + ip + ' ]');
+        eventLog('[ Token updated for user: ' + result[0].name + ' id: ' + result[0].id + ' ip: ' + ip + '  token: '+hash+' ]');
 
         eventLog('[ user ' + result[0].name + ' id: ' + result[0].id + ' IP: ' + ip + ' successfully logged in ]');
         res.json({type: 'login', result: 'OK', token: hash, id: result[0].id, name: result[0].name, mail: mail});

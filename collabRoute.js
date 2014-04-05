@@ -80,8 +80,7 @@ app.get('/travels/', function(req, res) {
     res.type('application/json');
     checkHeaderToken(req, connection, function(returnValue) {
         if (!returnValue) {
-            res.json({result: 'AUTH_FAILED'});
-            eventLog({result: 'AUTH_FAILED'});
+            res.json({type: 'adm_mbr_list', result: 'AUTH_FAILED'});
             return;
         }
         travelList.sendTravelList(req, res, connection, eventLog);
@@ -92,7 +91,7 @@ app.get('/routes/:id', function(req, res) {
     res.type('application/json');
     checkHeaderToken(req, connection, function(returnValue) {
         if (!returnValue) {
-            res.json({result: 'AUTH_FAILED'});
+            res.json({type: 'routes_list', result: 'AUTH_FAILED'});
             return;
         }
         travelList.getRoutes(req, res, connection, eventLog);
