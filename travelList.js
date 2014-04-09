@@ -3,20 +3,6 @@
  * To change this template file, choose Tools | Templates
  * and open the template in the editor.
  */
-function getUsers(req, res, connection, eventLog) {
-    var id = req.params.id;
-    var ip = req.connection.remoteAddress;
-    var query = 'SELECT id, email, name FROM user WHERE id <> ' + connection.escape(id);
-    connection.query(query, function(err, rows) {
-        if (err) {
-            res.json({type: 'usr_list_request', result: 'DATABASE_ERROR'});
-            eventLog('[ Database error on user list request from ' + ip + ' id: ' + id + ' ]');
-            return;
-        }
-        res.json({type: "users_list", result: "OK", array: rows});
-    });
-}
-
 function sendTravelUsersList(req, res, connection, eventLog) {
     var id = req.headers.id;
     var ip = req.connection.remoteAddress;
@@ -56,7 +42,6 @@ function sendTravelUsersList(req, res, connection, eventLog) {
                     eventLog('[ Database error on user list request from ' + ip + ' id: ' + id + ' ]');
                     return;
                 }
-                dump(users);
                 res.json({type: "adm_mbr_list", result: "OK", array: resultSet , users: users});    
             });
         });
