@@ -83,7 +83,7 @@ app.get('/travels/', function(req, res) {
             res.json({type: 'adm_mbr_list', result: 'AUTH_FAILED'});
             return;
         }
-        travelList.sendTravelList(req, res, connection, eventLog);
+        travelList.sendTravelUsersList(req, res, connection, eventLog);
     });
 });
 
@@ -115,12 +115,9 @@ function checkHeaderToken(req, connection, callback) { //callback function retur
         callback(false);
         return;
     }
-
     var ip = req.connection.remoteAddress;
     var id = req.headers.id;
     var token = req.headers.token;
-
-
     connection.query("SELECT token FROM user WHERE id =" + connection.escape(id), function(err, result) {
         if (err) {
             eventLog('[ Database error on header check from ' + ip + ' id: ' + id + ' ]');

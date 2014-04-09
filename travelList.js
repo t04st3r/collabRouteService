@@ -3,7 +3,21 @@
  * To change this template file, choose Tools | Templates
  * and open the template in the editor.
  */
-function sendTravelList(req, res, connection, eventLog) {
+function getUsers(req, res, connection, eventLog) {
+    var id = req.params.id;
+    var ip = req.connection.remoteAddress;
+    var query = 'SELECT id, email, name FROM user WHERE id <> ' + connection.escape(id);
+    connection.query(query, function(err, rows) {
+        if (err) {
+            res.json({type: 'usr_list_request', result: 'DATABASE_ERROR'});
+            eventLog('[ Database error on user list request from ' + ip + ' id: ' + id + ' ]');
+            return;
+        }
+        res.json({type: "users_list", result: "OK", array: rows});
+    });
+}
+
+function sendTravelUsersList(req, res, connection, eventLog) {
     var id = req.headers.id;
     var ip = req.connection.remoteAddress;
     var resultSet = [];
@@ -34,13 +48,21 @@ function sendTravelList(req, res, connection, eventLog) {
                     resultSet.push(rows[i]);
                 }
             }
-            //dump(resultSet);
-            res.json({type: "adm_mbr_list", result: "OK", array: orderResult(resultSet)});
+            resultSet = orderResult(resultSet);
+            query = 'SELECT id, email, name FROM user WHERE id <> ' + connection.escape(id);
+            connection.query(query, function(err, users) {
+                if (err) {
+                    res.json({type: 'usr_list_request', result: 'DATABASE_ERROR'});
+                    eventLog('[ Database error on user list request from ' + ip + ' id: ' + id + ' ]');
+                    return;
+                }
+                dump(users);
+                res.json({type: "adm_mbr_list", result: "OK", array: resultSet , users: users});    
+            });
         });
-
     });
-
 }
+
 function orderResult(result) {
     var current; //id index of a existing travel in orderedTravels array 
     var id = [];//travel id array 
@@ -69,13 +91,13 @@ function dump(obj) { //debug function
     console.log(JSON.stringify(obj));
 }
 
-function getRoutes(req, res, connection, eventLog){
+function getRoutes(req, res, connection, eventLog) {
     var id = req.params.id;
     var ip = req.connection.remoteAddress;
-    var query = 'SELECT id, address, latitude, longitude FROM route WHERE id_trip = '+connection.escape(id);
+    var query = 'SELECT id, address, latitude, longitude FROM route WHERE id_trip = ' + connection.escape(id);
     var options = {sql: query, nestTables: false};
-    connection.query(options, function(err, result){
-        if(err){
+    connection.query(options, function(err, result) {
+        if (err) {
             res.json({type: 'routes_request', result: 'DATABASE_ERROR'});
             eventLog('[ Database error on route list request from ' + ip + 'using trip id: ' + id + ' ]');
             return;
@@ -83,7 +105,8 @@ function getRoutes(req, res, connection, eventLog){
         //dump(result);
         res.json({type: "routes_list", result: "OK", array: result});
     });
-    
+
 }
-module.exports.sendTravelList = sendTravelList;
+module.exports.getUsers = getUsers;
+module.exports.sendTravelUsersList = sendTravelUsersList;
 module.exports.getRoutes = getRoutes;

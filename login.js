@@ -8,7 +8,7 @@ function doLogin(res, req, crypto, connection, eventLog, transport) {
     var mail = req.params.mail;
     var pass = req.params.pass;
     var ip = req.connection.remoteAddress;
-    connection.query('SELECT id, name, confirmed FROM user WHERE password = ' + connection.escape(pass) + ' AND email = ' + connection.escape(mail), function(err, result) {
+    connection.query('SELECT id, name, token, confirmed FROM user WHERE password = ' + connection.escape(pass) + ' AND email = ' + connection.escape(mail), function(err, result) {
         //console.log(result[0].token + " " + mail + " " + pass); //used for debugging 
         res.type('application/json');
         if (err) {
@@ -36,12 +36,13 @@ function doLogin(res, req, crypto, connection, eventLog, transport) {
             eventLog('[ login attempt from not confirmed user: ' + result[0].name + ' ip: ' + ip + ' mail: ' + mail + ' activation mail sent ]');
             return;
         }
-        var hash = crypto.createHash('md5').update(Math.random().toString()).digest('hex');
-        connection.query("UPDATE user SET token = '" + hash + "' WHERE id = " + result[0].id);
-        eventLog('[ Token updated for user: ' + result[0].name + ' id: ' + result[0].id + ' ip: ' + ip + '  token: '+hash+' ]');
-
+        if (result[0].token === null) {
+            result[0].token = crypto.createHash('md5').update(Math.random().toString()).digest('hex');
+            connection.query("UPDATE user SET token = '" + result[0].token + "' WHERE id = " + result[0].id);
+            eventLog('[ Token updated for user: ' + result[0].name + ' id: ' + result[0].id + ' ip: ' + ip + '  token: ' + result[0].token + ' ]');
+        }
         eventLog('[ user ' + result[0].name + ' id: ' + result[0].id + ' IP: ' + ip + ' successfully logged in ]');
-        res.json({type: 'login', result: 'OK', token: hash, id: result[0].id, name: result[0].name, mail: mail});
+        res.json({type: 'login', result: 'OK', token: result[0].token, id: result[0].id, name: result[0].name, mail: mail});
     });
 }
 

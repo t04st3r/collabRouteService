@@ -85,6 +85,5 @@ function confirmRegistration(req, res, connection, eventLog) {
         });
     });
 }
-
 module.exports.checkSendRegister = checkSendRegister;
 module.exports.confirmRegistration = confirmRegistration;
