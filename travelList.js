@@ -42,7 +42,7 @@ function sendTravelUsersList(req, res, connection, eventLog) {
                     eventLog('[ Database error on user list request from ' + ip + ' id: ' + id + ' ]');
                     return;
                 }
-                res.json({type: "adm_mbr_list", result: "OK", array: resultSet , users: users});    
+                res.json({type: "adm_mbr_list", result: "OK", array: resultSet, users: users});
             });
         });
     });
@@ -90,8 +90,90 @@ function getRoutes(req, res, connection, eventLog) {
         //dump(result);
         res.json({type: "routes_list", result: "OK", array: result});
     });
-
 }
-module.exports.getUsers = getUsers;
+
+function addNewTravel(req, res, connection, eventLog) {
+    var adminId = req.headers.id;
+    var ip = req.connection.remoteAddress;
+    var jsonRequest = req.body;
+    var travelName = jsonRequest.name;
+    var travelDes = jsonRequest.description;
+    var userArray = jsonRequest.users;
+    lockTripTable(ip, adminId, travelName, connection, eventLog, function(returnValueLock) {
+        if (!returnValueLock) {
+            res.json({type: "add_new_travel", result: "DATABASE_ERROR"});
+            return;
+        }
+        insertNewTrip(ip, adminId, travelName, travelDes, connection, eventLog, function(returnValueInsert) {
+            if (!returnValueInsert) {
+                res.json({type: "add_new_travel", result: "DATABASE_ERROR"});
+                return;
+            }
+            getNewTravelId(ip, adminId, travelName, connection, eventLog, function(returnValueId, id) {
+                if (!returnValueId) {
+                    res.json({type: "add_new_travel", result: "DATABASE_ERROR"});
+                    return;
+                }
+                unlockTripTable(ip, adminId, travelName, connection, eventLog, function(returnValueUnlock){
+                    if (!returnValueUnlock) {
+                    res.json({type: "add_new_travel", result: "DATABASE_ERROR"});
+                    return;
+                }
+                res.json({response: "OK", id: id});
+                });               
+            });
+        });
+    });
+}
+
+function unlockTripTable(ip, id, travelName, connection, eventLog, callback){
+    connection.query("UNLOCK TABLES" , function(err){
+        if (err) {
+            eventLog('[ Database error on unlock trip table after inserting new travel named: ' + travelName + ' done by user id: ' + id + ' ip: ' + ip + ' ]');
+            callback(false);
+        }
+    });
+}
+
+function getNewTravelId(ip, id, travelName, connection, eventLog, callback) {
+    connection.query('SELECT MAX(id) AS newId FROM trip', function(err, row) {
+        if (err) {
+            eventLog('[ Database error on getting brand new travel id named: ' + travelName + ' done by user id: ' + id + ' ip: ' + ip + ' ]');
+            callback(false);
+            connection.query("UNLOCK TABLES");
+            return;
+        }
+        callback(true, row[0].newId);
+        return;
+    });
+}
+
+function lockTripTable(ip, id, travelName, connection, eventLog, callback) {
+    connection.query('LOCK TABLE trip WRITE', function(err) {
+        if (err) {
+            eventLog('[ Database error on locking trip table on inserting new travel named: ' + travelName + ' done by user id: ' + id + ' ip: ' + ip + ' ]');
+            callback(false);
+            return;
+        }
+        callback(true);
+    });
+}
+
+function insertNewTrip(ip, id, travelName, travelDes, connection, eventLog, callback) {
+    var query = "INSERT INTO trip (name, id_admin, description) VALUES("
+            + connection.escape(travelName) + " , " + connection.escape(id) +
+            " , " + connection.escape(travelDes) + " ); ";
+    connection.query(query, function(err) {
+        if (err) {
+            eventLog('[ Database error on inserting new travel named: ' + travelName + ' done by user id: ' + id + ' ip: ' + ip + ' ]');
+            connection.query("UNLOCK TABLES");
+            callback(false);
+            return;
+        }
+        callback(true);
+    });
+}
+
+module.exports.addNewTravel = addNewTravel;
 module.exports.sendTravelUsersList = sendTravelUsersList;
 module.exports.getRoutes = getRoutes;

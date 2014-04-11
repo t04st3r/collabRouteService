@@ -87,6 +87,17 @@ app.get('/travels/', function(req, res) {
     });
 });
 
+app.post('/add/travel/' , function(req, res){
+    res.type('application/json');
+    checkHeaderToken(req, connection , function(returnValue){
+        if(!returnValue){
+            res.json({type : 'travel_req' , result: 'AUTH_FAILED'});
+            return;
+        }
+        travelList.addNewTravel(req, res, connection, eventLog);
+    });
+});
+
 app.get('/routes/:id', function(req, res) {
     res.type('application/json');
     checkHeaderToken(req, connection, function(returnValue) {
