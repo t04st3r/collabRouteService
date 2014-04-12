@@ -11,6 +11,7 @@ var fs = require('fs');
 var express = require('express');
 var https = require('https');
 var mysql = require('mysql');
+var queues = require('mysql-queues');//syncronous multiple query and transaction support library 
 var crypto = require('crypto'); //md5 for creating token
 var nodemailer = require('nodemailer');
 var login = require("./login.js");
@@ -48,7 +49,7 @@ var connection = mysql.createConnection({
     database: conf.dbName
 
 });
-
+queues(connection, true); //true on debug support
 connection.connect();
 
 var mailConfig = {
@@ -91,7 +92,7 @@ app.post('/add/travel/' , function(req, res){
     res.type('application/json');
     checkHeaderToken(req, connection , function(returnValue){
         if(!returnValue){
-            res.json({type : 'travel_req' , result: 'AUTH_FAILED'});
+            res.json({type : 'add_new_travel' , result: 'AUTH_FAILED'});
             return;
         }
         travelList.addNewTravel(req, res, connection, eventLog);
