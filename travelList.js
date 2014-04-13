@@ -103,7 +103,7 @@ function addNewTravel(req, res, connection, eventLog) {
     transaction.query('LOCK TABLE trip WRITE', function(err) {
         if (err) {
             transaction.rollback();
-            eventLog('[ Database error on locking trip table on inserting new travel named: ' + travelName + ' done by user id: ' + adminId + ' ip: ' + ip + ' ]');
+            eventLog('[ Database error on locking trip table for inserting new travel named: ' + travelName + ' done by user id: ' + adminId + ' ip: ' + ip + ' ]');
             res.json({type: "add_new_travel", result: "DATABASE_ERROR"});
             return;
         }
@@ -130,7 +130,7 @@ function addNewTravel(req, res, connection, eventLog) {
                         res.json({type: "add_new_travel", result: "DATABASE_ERROR"});
                         return;
                     }
-                    query = buildUsersMultipleInsertQuery(userArray, row[0].newId, eventLog);
+                    query = buildUsersMultipleInsertQuery(userArray, row[0].newId);
                     transaction.query(query, function(err) {
                         if (err) {
                             transaction.rollback();
@@ -139,7 +139,7 @@ function addNewTravel(req, res, connection, eventLog) {
                             return;
                         }
                         transaction.commit();
-                        res.json({response: "OK", id: row[0].newId});
+                        res.json({type: "add_new_travel", result: "OK", id: row[0].newId});
                     });
                 });
             });
