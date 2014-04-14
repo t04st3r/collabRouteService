@@ -88,16 +88,33 @@ app.get('/travels/', function(req, res) {
     });
 });
 
-app.post('/add/travel/' , function(req, res){
+app.post('/add/travel/', function(req, res) {
     res.type('application/json');
-    checkHeaderToken(req, connection , function(returnValue){
-        if(!returnValue){
-            res.json({type : 'add_new_travel' , result: 'AUTH_FAILED'});
+    //need to create a separate connection for locking tables in race condition
+    var lockConnection = mysql.createConnection({
+        host: conf.dbHostname,
+        port: conf.dbPort,
+        user: conf.dbUser,
+        password: conf.dbPassword,
+        database: conf.dbName
+    });
+    queues(lockConnection, true);
+    lockConnection.connect();
+    checkHeaderToken(req, lockConnection, function(returnValue) {
+        if (!returnValue) {
+            res.json({type: 'add_new_travel', result: 'AUTH_FAILED'});
             return;
         }
-        travelList.addNewTravel(req, res, connection, eventLog);
+        travelList.addNewTravel(req, res, lockConnection, eventLog);
+        setTimeout(function(){
+            lockConnection.destroy();
+        } , 5000); 
     });
 });
+
+app.post('/delete/travel/', function(req, res) {
+    res.type('application/json');
+})
 
 app.get('/routes/:id', function(req, res) {
     res.type('application/json');
