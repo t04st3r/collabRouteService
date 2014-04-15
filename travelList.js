@@ -15,7 +15,7 @@ function sendTravelUsersList(req, res, connection, eventLog) {
             eventLog('[ Database error on travel list request from ' + ip + 'where id: ' + id + ' is admin ]');
             return;
         }
-        query = 'SELECT trip.id, trip.name, trip.description, trip.id_admin, user_adm.name AS adm_name, user.name AS user_name, user.id AS user_id FROM trip, user, user_trip, user AS user_adm WHERE user_adm.id = trip.id_admin AND trip.id = user_trip.id_trip AND user.id = user_trip.id_user AND trip.id = ANY (SELECT user_trip.id_trip FROM user_trip WHERE user_trip.id_user = '+connection.escape(id)+')';
+        query = 'SELECT trip.id, trip.name, trip.description, trip.id_admin, user_adm.name AS adm_name, user.name AS user_name, user.id AS user_id FROM trip, user, user_trip, user AS user_adm WHERE user_adm.id = trip.id_admin AND trip.id = user_trip.id_trip AND user.id = user_trip.id_user AND trip.id = ANY (SELECT user_trip.id_trip FROM user_trip WHERE user_trip.id_user = ' + connection.escape(id) + ')';
         options.sql = query;
         connection.query(options, function(err, rows) {
             if (err) {
@@ -159,6 +159,39 @@ function buildUsersMultipleInsertQuery(array, travelId) {
     return insertQuery;
 }
 
+function deleteTravel(req, res, connection, eventLog) {
+    var id = req.headers.id;
+    var ip = req.connection.remoteAddress;
+    var travelId = req.body.travelId;
+    connection.query('SELECT id_admin FROM trip WHERE id = ' + connection.escape(travelId), function(err, row) {
+        if (err || row.length === 0) {
+            eventLog('[ Database error on check trip administrator with given id: ' + id + ' on travel id: ' + travelId + ' ip: ' + ip + ' ]');
+            res.json({type: "delete_travel", result: "DATABASE_ERROR"});
+            return;
+        }
+        if (row[0].id_admin === parseInt(id)) {
+            connection.query('DELETE FROM trip WHERE id =' + connection.escape(travelId), function(err) {
+                if (err) {
+                    eventLog('[ Database error on delete trip id:' + travelId + ' done by trip administrator with id: ' + travelId + ' ip: ' + ip + ' ]');
+                    res.json({type: "delete_travel", result: "DATABASE_ERROR"});
+                    return;
+                }
+                res.json({type: "delete_travel", result: "OK"});
+                return;
+            });
+        }
+        connection.query('DELETE FROM user_trip WHERE id_user = '+connection.escape(id)+' AND id_trip = ' + connection.escape(travelId) , function(err){
+            if (err) {
+                    eventLog('[ Database error on delete row on user_trip using trip id:' + travelId + ' done by user with id: ' + travelId + ' ip: ' + ip + ' ]');
+                    res.json({type: "delete_travel", result: "DATABASE_ERROR"});
+                    return;
+                }
+        res.json({type: "delete_travel", result: "OK"});
+        });
+    });
+}
+
+module.exports.deleteTravel = deleteTravel;
 module.exports.addNewTravel = addNewTravel;
 module.exports.sendTravelUsersList = sendTravelUsersList;
 module.exports.getRoutes = getRoutes;

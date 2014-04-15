@@ -106,15 +106,22 @@ app.post('/add/travel/', function(req, res) {
             return;
         }
         travelList.addNewTravel(req, res, lockConnection, eventLog);
-        setTimeout(function(){
+        setTimeout(function() {
             lockConnection.destroy();
-        } , 5000); 
+        }, 5000); //necessary delay, waiting to complete transaction
     });
 });
 
 app.post('/delete/travel/', function(req, res) {
     res.type('application/json');
-})
+    checkHeaderToken(req, connection, function(returnValue) {
+        if (!returnValue) {
+            res.json({type: 'leave_delete_travel', result: 'AUTH_FAILED'});
+            return;
+        }
+        travelList.deleteTravel(req, res, connection, eventLog);
+    });
+});
 
 app.get('/routes/:id', function(req, res) {
     res.type('application/json');
@@ -126,7 +133,6 @@ app.get('/routes/:id', function(req, res) {
         travelList.getRoutes(req, res, connection, eventLog);
     });
 });
-
 function eventLog(event) {
     var currentdate = new Date();
     var datetime = "[" + currentdate.getDate() + "/"
