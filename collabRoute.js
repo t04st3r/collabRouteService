@@ -17,6 +17,7 @@ var nodemailer = require('nodemailer');
 var login = require("./login.js");
 var registration = require("./registration.js");
 var travelList = require("./travelList.js");
+var coordinates = require("./coordinates.js");
 //load config data from external JSON file
 var confFile = fs.readFileSync('/home/ubuntu/collabRoute/collabRoute.json', 'utf8');
 var conf = JSON.parse(confFile);
@@ -120,6 +121,16 @@ app.post('/delete/travel/', function(req, res) {
             return;
         }
         travelList.deleteTravel(req, res, connection, eventLog);
+    });
+});
+app.post('/update/coordinates/', function(req, res) {
+    res.type('application/json');
+    checkHeaderToken(req, connection, function(returnValue) {
+        if (!returnValue) {
+            res.json({type: 'leave_delete_travel', result: 'AUTH_FAILED'});
+            return;
+        }
+        coordinates.updateCoordinates(req, res, connection, eventLog);
     });
 });
 

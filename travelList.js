@@ -15,12 +15,12 @@ function sendTravelUsersList(req, res, connection, eventLog) {
             eventLog('[ Database error on travel list request from ' + ip + 'where id: ' + id + ' is admin ]');
             return;
         }
-        query = 'SELECT trip.id, trip.name, trip.description, trip.id_admin, user_adm.name AS adm_name, user.name AS user_name, user.id AS user_id FROM trip, user, user_trip, user AS user_adm WHERE user_adm.id = trip.id_admin AND trip.id = user_trip.id_trip AND user.id = user_trip.id_user AND trip.id = ANY (SELECT user_trip.id_trip FROM user_trip WHERE user_trip.id_user = ' + connection.escape(id) + ')';
+        query = 'SELECT trip.id, trip.name, trip.description, trip.id_admin, user_adm.name AS adm_name, user.name AS user_name, user.id AS user_id FROM trip, user, user_trip, user AS user_adm WHERE user_adm.id = trip.id_admin AND trip.id = user_trip.id_trip AND user.id = user_trip.id_user AND user.id <> '+connection.escape(id)+' AND trip.id = ANY (SELECT user_trip.id_trip FROM user_trip WHERE user_trip.id_user = ' + connection.escape(id) + ')';
         options.sql = query;
         connection.query(options, function(err, rows) {
             if (err) {
                 res.json({type: 'mbr_list_request', result: 'DATABASE_ERROR'});
-                eventLog('[ Database error on travel list request from ' + ip + 'where id: ' + id + ' is a member ]');
+                eventLog('[ Database error on travel list request from ' + ip + ' where id: ' + id + ' is a member ]');
                 return;
             }
             var len;
@@ -119,6 +119,7 @@ function addNewTravel(req, res, connection, eventLog) {
             }
             transaction.query('SELECT MAX(id) AS newId FROM trip', function(err, row) {
                 if (err) {
+                    transaction.rollback();
                     eventLog('[ Database error on getting brand new travel id named: ' + travelName + ' done by user id: ' + adminId + ' ip: ' + ip + ' ]');
                     res.json({type: "add_new_travel", result: "DATABASE_ERROR"});
                     return;
