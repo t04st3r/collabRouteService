@@ -7,7 +7,7 @@ function sendTravelUsersList(req, res, connection, eventLog) {
     var id = req.headers.id;
     var ip = req.connection.remoteAddress;
     var resultSet = [];
-    var query = 'SELECT trip.id, trip.name, trip.description, user.name AS user_name, user.id AS user_id FROM trip, user, user_trip WHERE trip.id = user_trip.id_trip AND user.id = user_trip.id_user AND trip.id_admin = ' + connection.escape(id);
+    var query = 'SELECT trip.id, trip.name, trip.description, user.name AS user_name, user.id AS user_id, user.email AS user_email FROM trip, user, user_trip WHERE trip.id = user_trip.id_trip AND user.id = user_trip.id_user AND trip.id_admin = ' + connection.escape(id);
     var options = {sql: query, nestTables: true};
     connection.query(options, function(err, result) {
         if (err) {
@@ -15,7 +15,7 @@ function sendTravelUsersList(req, res, connection, eventLog) {
             eventLog('[ Database error on travel list request from ' + ip + 'where id: ' + id + ' is admin ]');
             return;
         }
-        query = 'SELECT trip.id, trip.name, trip.description, trip.id_admin, user_adm.name AS adm_name, user.name AS user_name, user.id AS user_id FROM trip, user, user_trip, user AS user_adm WHERE user_adm.id = trip.id_admin AND trip.id = user_trip.id_trip AND user.id = user_trip.id_user AND user.id <> '+connection.escape(id)+' AND trip.id = ANY (SELECT user_trip.id_trip FROM user_trip WHERE user_trip.id_user = ' + connection.escape(id) + ')';
+        query = 'SELECT trip.id, trip.name, trip.description, trip.id_admin, user_adm.name AS adm_name, user.name AS user_name, user.id AS user_id, user.email AS user_email FROM trip, user, user_trip, user AS user_adm WHERE user_adm.id = trip.id_admin AND trip.id = user_trip.id_trip AND user.id = user_trip.id_user AND user.id <> '+connection.escape(id)+' AND trip.id = ANY (SELECT user_trip.id_trip FROM user_trip WHERE user_trip.id_user = ' + connection.escape(id) + ')';
         options.sql = query;
         connection.query(options, function(err, rows) {
             if (err) {
@@ -35,7 +35,7 @@ function sendTravelUsersList(req, res, connection, eventLog) {
                 }
             }
             resultSet = orderResult(resultSet);
-            query = 'SELECT id, email, name FROM user WHERE id <> ' + connection.escape(id);
+            query = 'SELECT id, email, name FROM user WHERE id <> ' + connection.escape(id)+' AND confirmed = 1';
             connection.query(query, function(err, users) {
                 if (err) {
                     res.json({type: 'usr_list_request', result: 'DATABASE_ERROR'});
