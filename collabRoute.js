@@ -7,39 +7,50 @@
 
 
 
-var fs = require('fs');
-var express = require('express');
-var https = require('https');
-var mysql = require('mysql');
-var queues = require('mysql-queues');//syncronous multiple query and transaction support library 
-var crypto = require('crypto'); //md5 for creating token
-var nodemailer = require('nodemailer');
-var login = require("./login.js");
-var registration = require("./registration.js");
-var travelList = require("./travelList.js");
-var coordinates = require("./coordinates.js");
-//load config data from external JSON file
-var confFile = fs.readFileSync('/home/ubuntu/collabRoute/collabRoute.json', 'utf8');
-var conf = JSON.parse(confFile);
+var fs = require('fs'),
+        express = require('express'),
+        https = require('https'),
+        mysql = require('mysql'),
+        queues = require('mysql-queues'), //syncronous multiple query and transaction support library 
+        crypto = require('crypto'), //md5 for creating token
+        nodemailer = require('nodemailer'),
+        login = require("./login.js"),
+        registration = require("./registration.js"),
+        travelList = require("./travelList.js"),
+        coordinates = require("./coordinates.js"),
+        chat = require("./chat.js");
+        //load config data from external JSON file
+        confFile = fs.readFileSync('/home/raffaele/collabRoute/collabRoute.json', 'utf8'),
+        conf = JSON.parse(confFile),
+        //load 2048 bit SSL/TSL key and his relative signed certificate
+        collabKey = fs.readFileSync(conf.keyPath),
+        collabCert = fs.readFileSync(conf.certPath),
+        option = {
+            key: collabKey,
+            cert: collabCert
+        },
 
-//load 2048 bit SSL/TSL key and his relative signed certificate
-var collabKey = fs.readFileSync(conf.keyPath);
-var collabCert = fs.readFileSync(conf.certPath);
+PORT = conf.serverPort,
+        HOST = conf.serverHostname,
+        CHATPORT = conf.serverChatPort,
+        
+        //chat variables
+        chatHttp = require('http'),
 
-var option = {
-    key: collabKey,
-    cert: collabCert
-};
-
-var PORT = conf.serverPort;
-var HOST = conf.serverHostname;
-
-var app = express();
+app = express();
 
 app.configure(function() {
     app.use(express.urlencoded());
     app.use(express.json());
     app.use(app.router);
+});
+
+var chatApp = express();
+
+chatApp.configure(function() {
+    chatApp.use(express.urlencoded());
+    chatApp.use(express.json());
+    chatApp.use(chatApp.router);
 });
 
 var connection = mysql.createConnection({
@@ -59,12 +70,16 @@ var mailConfig = {
         user: conf.mailUser,
         pass: conf.mailPass
     }
-};
+},
+transport = nodemailer.createTransport("SMTP", mailConfig),
+        server = https.createServer(option, app).listen(PORT, HOST);
+eventLog('CollabRoute Server is running on ' + HOST + ':' + PORT);
+var chatServer = chatHttp.createServer(chatApp).listen(CHATPORT, HOST);
+eventLog('CollabRoute ChatServer is running on ' + HOST + ':' + CHATPORT);
 
-var transport = nodemailer.createTransport("SMTP", mailConfig);
+var io = require('socket.io').listen(chatServer);
 
-var server = https.createServer(option, app).listen(PORT, HOST);
-console.log('Collab Server is running on %s:%s', HOST, PORT);
+chat.chatHandler(io, eventLog, connection);
 
 app.get('/auth/:mail/:pass', function(req, res) {
     login.doLogin(res, req, crypto, connection, eventLog, transport);
