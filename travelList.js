@@ -15,7 +15,7 @@ function sendTravelUsersList(req, res, connection, eventLog) {
             eventLog('[ Database error on travel list request from ' + ip + 'where id: ' + id + ' is admin ]');
             return;
         }
-        query = 'SELECT trip.id, trip.name, trip.description, trip.id_admin, user_adm.name AS adm_name, user.name AS user_name, user.id AS user_id, user.email AS user_email FROM trip, user, user_trip, user AS user_adm WHERE user_adm.id = trip.id_admin AND trip.id = user_trip.id_trip AND user.id = user_trip.id_user AND user.id <> '+connection.escape(id)+' AND trip.id = ANY (SELECT user_trip.id_trip FROM user_trip WHERE user_trip.id_user = ' + connection.escape(id) + ')';
+        query = 'SELECT trip.id, trip.name, trip.description, trip.id_admin, user_adm.name AS adm_name, user_adm.email AS adm_mail, user.name AS user_name, user.id AS user_id, user.email AS user_email FROM trip, user, user_trip, user AS user_adm WHERE user_adm.id = trip.id_admin AND trip.id = user_trip.id_trip AND user.id = user_trip.id_user AND user.id <> '+connection.escape(id)+' AND trip.id = ANY (SELECT user_trip.id_trip FROM user_trip WHERE user_trip.id_user = ' + connection.escape(id) + ')';
         options.sql = query;
         connection.query(options, function(err, rows) {
             if (err) {
@@ -58,6 +58,7 @@ function orderResult(result) {
             var newTrip = result[key].trip;
             if (result[key].trip.hasOwnProperty('id_admin')) { //if is a travel where the user is NOT the admin set adm_name as trip property
                 newTrip.adm_name = result[key].user_adm.adm_name;
+                newTrip.adm_mail = result[key].user_adm.adm_mail;
             }
             newTrip.user = [];
             newTrip.user.push(result[key].user); //{id : result[key].user.user_id , name: result[key].user.user_name})
