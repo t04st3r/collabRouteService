@@ -31,11 +31,18 @@ function chatHandler(io, eventLog, connection) {
                 eventLog("CLIENT " + socket.id + " IP: " + address.address + " ID: " + data.userId + " has joined travel room with ID: " + rooms[index]);
                 var clientList = io.sockets.clients(rooms[index]);
                 //list of current users on the room for update chat users status
-                var clientListToSend = [];
+                var clientsOnLine = [];
                 clientList.forEach(function(client) {
-                    clientListToSend.push({id: client.nickname});
+                    clientsOnLine.push({id: client.nickname});
                 });
-                io.sockets.in(rooms[index]).emit('clientList', clientListToSend);
+                getUsersLocation(connection, eventLog, clientsOnLine, rooms[index], function(array){
+                    if(array !== null){
+                        io.sockets.in(rooms[index]).emit('clientList', array);
+                    }else{
+                        io.sockets.in(rooms[index]).emit('clientList', [{result : 'DATABASE_ERROR'}]);
+                    }
+                });
+                
             });
         });
         socket.on('text', function(data) {
@@ -60,6 +67,40 @@ function checkData(connection, idUser, idTrip, callback) {
                 isAdmin = true;
             }
             callback(isMember || isAdmin);
+        });
+    });
+}
+
+function getUsersLocation(connection, eventLog, clients, idTrip, callback) {
+    var query = 'SELECT id, longitude, latitude FROM user WHERE user.id = ANY (SELECT id_user FROM user_trip WHERE id_trip = ' + connection.escape(idTrip) + ')';
+    connection.query(query, function(err, rows) {
+        if (err) {
+            eventLog('error on getting users coordinates on travel ID: ' + idTrip);
+            callback(null);
+            return;
+        }
+        var adminQuery = 'SELECT user.id, longitude, latitude FROM user, trip WHERE user.id =  trip.id_admin AND trip.id = ' + connection.escape(idTrip);
+        connection.query(adminQuery, function(err, row) {
+            if (err) {
+                eventLog('error on getting administrator coordinates on travel ID: ' + idTrip);
+                callback(null);
+                return;
+            }
+            row[0].isAdmin = true;
+            var totalResult = rows.concat(row);
+            totalResult.forEach(function(item) {
+                item.longitude = (item.longitude === null ? 'unknown' : item.longitude);
+                item.latitude = (item.latitude === null ? 'unknown' : item.latitude);
+            });
+            totalResult.forEach(function(row) {
+                clients.forEach(function(chatClient) {
+                    if (row.id === chatClient.id) {
+                        row.onLine = true;
+                    }
+                });
+            });
+            eventLog(JSON.stringify(totalResult));
+            callback(totalResult);
         });
     });
 }
