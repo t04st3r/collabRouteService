@@ -5,7 +5,7 @@
  */
 
 var rooms = []; //array of all rooms (identified by travel ID)
-var util = require('util');
+
 
 function chatHandler(io, eventLog, connection) {
     io.set('log level', 1);
@@ -29,20 +29,29 @@ function chatHandler(io, eventLog, connection) {
                 }
                 socket.join(rooms[index]);
                 eventLog("CLIENT " + socket.id + " IP: " + address.address + " ID: " + data.userId + " has joined travel room with ID: " + rooms[index]);
-                var clientList = io.sockets.clients(rooms[index]);
+                var clientsList = io.sockets.clients(rooms[index]);
                 //list of current users on the room for update chat users status
                 var clientsOnLine = [];
-                clientList.forEach(function(client) {
-                    clientsOnLine.push({id: client.nickname});
-                });
-                getUsersLocation(connection, eventLog, clientsOnLine, rooms[index], function(array){
-                    if(array !== null){
-                        io.sockets.in(rooms[index]).emit('clientList', array);
-                    }else{
-                        io.sockets.in(rooms[index]).emit('clientList', [{result : 'DATABASE_ERROR'}]);
+                var idString = '';
+                var clientsLength = (clientsList.length - 1), count = 0;
+                clientsList.forEach(function(client) {
+                   clientsOnLine.push({id: client.nickname});
+                    var idToString = client.nickname.toString();
+                    if (count === clientsLength) {
+                        idString += idToString;
+                    } else {
+                        idString = idString + idToString + ',';
                     }
+                    count++;
                 });
-                
+                var query = 'SELECT id, name, address FROM user WHERE id IN (' + connection.escape(idString) + ')';
+                connection.query(query, function(err, rows) {
+                    if (err) {
+                        eventLog("[ Error on getting users list on chat connection done by ID: " + data.userId + " ]");
+                        return;
+                    }
+                    io.sockets.in(rooms[index]).emit('clientList', rows);
+                });
             });
         });
         socket.on('text', function(data) {
@@ -71,7 +80,7 @@ function checkData(connection, idUser, idTrip, callback) {
     });
 }
 
-function getUsersLocation(connection, eventLog, clients, idTrip, callback) {
+function getUsersLocation(connection, eventLog, clients, idTrip, key, https, callback) {
     var query = 'SELECT id, longitude, latitude FROM user WHERE user.id = ANY (SELECT id_user FROM user_trip WHERE id_trip = ' + connection.escape(idTrip) + ')';
     connection.query(query, function(err, rows) {
         if (err) {
@@ -99,8 +108,25 @@ function getUsersLocation(connection, eventLog, clients, idTrip, callback) {
                     }
                 });
             });
-            eventLog(JSON.stringify(totalResult));
+            //eventLog(JSON.stringify(totalResult));
+            //totalResult.forEach(function(item) {
+            //if (item.longitude !== 'unknown' && item.latitude !== 'unknown') {
+
+            var item = {latitude: "43.007758333333335", longitude: "12.410298333333333"}
+            var options = {
+                hostname: 'maps.googleapis.com',
+                path: '/maps/api/geocode/json?latlng=' + item.latitude + ',' + item.longitude + '&sensor=false&key=' + key,
+                method: 'GET'
+            };
+            https.request(options, function(res) {
+                res.on('data', function(d) {
+                    eventLog(JSON.stringify(d));
+                });
+            });
+            //}
+
             callback(totalResult);
+
         });
     });
 }

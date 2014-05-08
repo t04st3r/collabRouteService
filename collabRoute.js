@@ -18,7 +18,8 @@ var fs = require('fs'),
         registration = require("./registration.js"),
         travelList = require("./travelList.js"),
         coordinates = require("./coordinates.js"),
-        chat = require("./chat.js");
+        chat = require("./chat.js"),
+        request = require('request'),
         //load config data from external JSON file
         confFile = fs.readFileSync('/home/raffaele/collabRoute/collabRoute.json', 'utf8'),
         conf = JSON.parse(confFile),
@@ -29,15 +30,12 @@ var fs = require('fs'),
             key: collabKey,
             cert: collabCert
         },
-
 PORT = conf.serverPort,
         HOST = conf.serverHostname,
         CHATPORT = conf.serverChatPort,
-        
         //chat variables
         chatHttp = require('http'),
-
-app = express();
+        app = express();
 
 app.configure(function() {
     app.use(express.urlencoded());
@@ -145,7 +143,7 @@ app.post('/update/coordinates/', function(req, res) {
             res.json({type: 'leave_delete_travel', result: 'AUTH_FAILED'});
             return;
         }
-        coordinates.updateCoordinates(req, res, connection, eventLog);
+        coordinates.updateCoordinates(req, res, connection, eventLog, request, conf.APIKey);
     });
 });
 
