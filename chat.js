@@ -32,25 +32,15 @@ function chatHandler(io, eventLog, connection) {
                 var clientsList = io.sockets.clients(rooms[index]);
                 //list of current users on the room for update chat users status
                 var clientsOnLine = [];
-                var idString = '';
-                var clientsLength = (clientsList.length - 1), count = 0;
                 clientsList.forEach(function(client) {
-                   clientsOnLine.push({id: client.nickname});
-                    var idToString = client.nickname.toString();
-                    if (count === clientsLength) {
-                        idString += idToString;
-                    } else {
-                        idString = idString + idToString + ',';
-                    }
-                    count++;
+                    clientsOnLine.push({id: client.nickname});
                 });
-                var query = 'SELECT id, name, address FROM user WHERE id IN (' + connection.escape(idString) + ')';
-                connection.query(query, function(err, rows) {
-                    if (err) {
-                        eventLog("[ Error on getting users list on chat connection done by ID: " + data.userId + " ]");
+                getUsersLocation(connection, eventLog, clientsOnLine, data.travelId, function(array) {
+                    if (array !== null) {
+                        io.sockets.in(rooms[index]).emit('clientList', {result: 'OK', list: array});
                         return;
                     }
-                    io.sockets.in(rooms[index]).emit('clientList', rows);
+                    io.sockets.in(rooms[index].emit('clientList', {result: 'DATABASE_ERROR'}));
                 });
             });
         });
@@ -80,15 +70,15 @@ function checkData(connection, idUser, idTrip, callback) {
     });
 }
 
-function getUsersLocation(connection, eventLog, clients, idTrip, key, https, callback) {
-    var query = 'SELECT id, longitude, latitude FROM user WHERE user.id = ANY (SELECT id_user FROM user_trip WHERE id_trip = ' + connection.escape(idTrip) + ')';
+function getUsersLocation(connection, eventLog, clients, idTrip, callback) {
+    var query = 'SELECT id, name, longitude, latitude, address FROM user WHERE user.id IN (SELECT id_user FROM user_trip WHERE id_trip = ' + connection.escape(idTrip) + ')';
     connection.query(query, function(err, rows) {
         if (err) {
             eventLog('error on getting users coordinates on travel ID: ' + idTrip);
             callback(null);
             return;
         }
-        var adminQuery = 'SELECT user.id, longitude, latitude FROM user, trip WHERE user.id =  trip.id_admin AND trip.id = ' + connection.escape(idTrip);
+        var adminQuery = 'SELECT user.id, user.name, longitude, latitude, address FROM user, trip WHERE user.id =  trip.id_admin AND trip.id = ' + connection.escape(idTrip);
         connection.query(adminQuery, function(err, row) {
             if (err) {
                 eventLog('error on getting administrator coordinates on travel ID: ' + idTrip);
@@ -109,24 +99,7 @@ function getUsersLocation(connection, eventLog, clients, idTrip, key, https, cal
                 });
             });
             //eventLog(JSON.stringify(totalResult));
-            //totalResult.forEach(function(item) {
-            //if (item.longitude !== 'unknown' && item.latitude !== 'unknown') {
-
-            var item = {latitude: "43.007758333333335", longitude: "12.410298333333333"}
-            var options = {
-                hostname: 'maps.googleapis.com',
-                path: '/maps/api/geocode/json?latlng=' + item.latitude + ',' + item.longitude + '&sensor=false&key=' + key,
-                method: 'GET'
-            };
-            https.request(options, function(res) {
-                res.on('data', function(d) {
-                    eventLog(JSON.stringify(d));
-                });
-            });
-            //}
-
             callback(totalResult);
-
         });
     });
 }
