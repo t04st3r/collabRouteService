@@ -3,11 +3,9 @@
  * To change this template file, choose Tools | Templates
  * and open the template in the editor.
  */
-
-var rooms = []; //array of all rooms (identified by travel ID)
-
-
-function chatHandler(io, eventLog, connection) {
+var io;
+function chatHandler(ioSocket, eventLog, connection) {
+    io = ioSocket;
     io.set('log level', 1);
     io.sockets.on('connection', function(socket) {
         var address = socket.handshake.address;
@@ -21,15 +19,9 @@ function chatHandler(io, eventLog, connection) {
                     return;
                 }
                 socket.nickname = data.userId;
-                var index;
-                //if the room has not been created yet
-                if ((index = rooms.indexOf(data.travelId)) === -1) {
-                    rooms.push(data.travelId);
-                    index = rooms.indexOf(data.travelId);
-                }
-                socket.join(rooms[index]);
-                eventLog("CLIENT " + socket.id + " IP: " + address.address + " ID: " + data.userId + " has joined travel room with ID: " + rooms[index]);
-                var clientsList = io.sockets.clients(rooms[index]);
+                socket.join(data.travelId);
+                eventLog("CLIENT " + socket.id + " IP: " + address.address + " ID: " + data.userId + " has joined travel room with ID: " + data.travelId);
+                var clientsList = io.sockets.clients(data.travelId);
                 //list of current users on the room for update chat users status
                 var clientsOnLine = [];
                 clientsList.forEach(function(client) {
@@ -37,20 +29,28 @@ function chatHandler(io, eventLog, connection) {
                 });
                 getUsersLocation(connection, eventLog, clientsOnLine, data.travelId, function(array) {
                     if (array !== null) {
-                        io.sockets.in(rooms[index]).emit('clientList', {result: 'OK', list: array});
+                        io.sockets.in(data.travelId).emit('clientList', {result: 'OK', list: array});
                         return;
                     }
-                    io.sockets.in(rooms[index].emit('clientList', {result: 'DATABASE_ERROR'}));
+                    io.sockets.in(data.travelId.emit('clientList', {result: 'DATABASE_ERROR'}));
                 });
             });
         });
+
         socket.on('text', function(data) {
             io.sockets.in(data.travelId).emit('text', {id: data.userId, text: data.text});
         });
+
+        socket.on('update_request', function(data) {
+            sendListOnUpdate(data.travelId, socket.nickname,  eventLog,  connection, false);
+        });
+
         socket.on('disconnect', function() {
-            var address = socket.handshake.address;
-            eventLog("CLIENT " + socket.id + " IP: " + address.address + " just disconnected his socket");
-            //TODO update client list
+            var id = getTravelId(socket);
+            sendListOnUpdate(id, socket.nickname, eventLog, connection, true);
+            eventLog("CLIENT " + socket.id + " IP: " + socket.handshake.address.address + " ID: " + socket.nickname + " just disconnected his socket");
+
+
         });
     });
 }
@@ -71,37 +71,73 @@ function checkData(connection, idUser, idTrip, callback) {
 }
 
 function getUsersLocation(connection, eventLog, clients, idTrip, callback) {
-    var query = 'SELECT id, name, longitude, latitude, address FROM user WHERE user.id IN (SELECT id_user FROM user_trip WHERE id_trip = ' + connection.escape(idTrip) + ')';
+    var query = 'SELECT id, name, longitude, latitude, address, email FROM user WHERE user.id IN (SELECT id_user FROM user_trip WHERE id_trip = ' + connection.escape(idTrip) + ')';
     connection.query(query, function(err, rows) {
         if (err) {
             eventLog('error on getting users coordinates on travel ID: ' + idTrip);
             callback(null);
             return;
         }
-        var adminQuery = 'SELECT user.id, user.name, longitude, latitude, address FROM user, trip WHERE user.id =  trip.id_admin AND trip.id = ' + connection.escape(idTrip);
+        var adminQuery = 'SELECT user.id, user.name, longitude, latitude, address, email FROM user, trip WHERE user.id =  trip.id_admin AND trip.id = ' + connection.escape(idTrip);
         connection.query(adminQuery, function(err, row) {
             if (err) {
                 eventLog('error on getting administrator coordinates on travel ID: ' + idTrip);
                 callback(null);
                 return;
             }
-            row[0].isAdmin = true;
-            var totalResult = rows.concat(row);
+            var totalResult = row.concat(rows);
             totalResult.forEach(function(item) {
-                item.longitude = (item.longitude === null ? 'unknown' : item.longitude);
-                item.latitude = (item.latitude === null ? 'unknown' : item.latitude);
+                item.longitude = (item.longitude === null ? '0' : item.longitude);
+                item.latitude = (item.latitude === null ? '0' : item.latitude);
             });
-            totalResult.forEach(function(row) {
-                clients.forEach(function(chatClient) {
+            clients.forEach(function(chatClient) {
+                totalResult.forEach(function(row) {
                     if (row.id === chatClient.id) {
                         row.onLine = true;
+                    } else if (!row.hasOwnProperty('onLine')) {
+                        row.onLine = false;
                     }
                 });
             });
-            //eventLog(JSON.stringify(totalResult));
             callback(totalResult);
         });
     });
 }
+function getTravelId(socket) {
+    var obj = io.sockets.manager.rooms;
+    var socketId = socket.id;
+    var result = -1;
+    for (var prop in obj) {
+        if (prop !== '') {
+            var array = obj[prop];
+            array.forEach(function(item) {
+                if (item === socketId) {
+                    result = prop.substring(1);
+                }
+            });
+        }
+    }
+    return result;
+}
+function sendListOnUpdate(travelId, userId, eventLog, connection, isDisconnecting) {
+    var clientsList = io.sockets.clients(travelId);
+    //list of current users on the room for update chat users status
+    var clientsOnLine = [];
+    clientsList.forEach(function(client) {
+        if (!isDisconnecting)
+            clientsOnLine.push({id: client.nickname});
+        else if (client.nickname !== userId)
+            clientsOnLine.push({id: client.nickname});
+    });
+    getUsersLocation(connection, eventLog, clientsOnLine, travelId, function(array) {
+        if (array !== null) {
+            io.sockets.in(travelId).emit('clientList', {result: 'OK', list: array});
+            return;
+        }
+        io.sockets.in(travelId).emit('clientList', {result: 'DATABASE_ERROR'});
+    });
+}
+
 
 module.exports.chatHandler = chatHandler;
+module.exports.sendListOnUpdate = sendListOnUpdate;

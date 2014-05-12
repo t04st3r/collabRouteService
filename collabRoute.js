@@ -63,7 +63,7 @@ queues(connection, true); //true on debug support
 connection.connect();
 
 var mailConfig = {
-    service: conf.mailService,
+    service :conf.service,
     auth: {
         user: conf.mailUser,
         pass: conf.mailPass
@@ -143,7 +143,7 @@ app.post('/update/coordinates/', function(req, res) {
             res.json({type: 'leave_delete_travel', result: 'AUTH_FAILED'});
             return;
         }
-        coordinates.updateCoordinates(req, res, connection, eventLog, request, conf.APIKey);
+        coordinates.updateCoordinates(req, res, connection, eventLog, request, conf.APIKey, chat);
     });
 });
 

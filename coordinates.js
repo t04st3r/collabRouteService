@@ -4,11 +4,13 @@
  * and open the template in the editor.
  */
 
-function updateCoordinates(req, res, connection, eventLog, request, key) {
+function updateCoordinates(req, res, connection, eventLog, request, key, chat) {
     var id = req.headers.id;
     var jsonRequest = req.body;
     var long2 = jsonRequest.longitude;
     var lat2 = jsonRequest.latitude;
+    var travelId = jsonRequest.travelId;
+    
     if (!validateLatLong(lat2, long2)) {
         res.json({type: "update_coordinates", result: "WRONG_COORDINATES"});
         eventLog("[ Error wrong coordinates from coordinate update request done by user with ID: " + id + " ]");
@@ -38,6 +40,8 @@ function updateCoordinates(req, res, connection, eventLog, request, key) {
                 return;
             }
             //eventLog('[ successfully coordinates updated from user ID: ' + id + ' Lat: ' + lat2 + ' Long: ' + long2 + ' address: ' + address + ']');
+            
+            chat.sendListOnUpdate(travelId, id, eventLog, connection, false);
             res.json({type: "update_coordinates", result: "OK", latitude: lat2, longitude: long2, address: address});
             return;
         });
