@@ -42,7 +42,7 @@ function chatHandler(ioSocket, eventLog, connection) {
         });
 
         socket.on('update_request', function(data) {
-            sendListOnUpdate(data.travelId, socket.nickname,  eventLog,  connection, false);
+            sendListOnUpdate(data.travelId, socket.nickname, eventLog, connection, false);
         });
 
         socket.on('disconnect', function() {
@@ -90,14 +90,23 @@ function getUsersLocation(connection, eventLog, clients, idTrip, callback) {
                 item.longitude = (item.longitude === null ? '0' : item.longitude);
                 item.latitude = (item.latitude === null ? '0' : item.latitude);
             });
-            clients.forEach(function(chatClient) {
-                totalResult.forEach(function(row) {
+            totalResult.forEach(function(row) {
+                clients.forEach(function(chatClient) {
                     if (row.id === chatClient.id) {
                         row.onLine = true;
                     } else if (!row.hasOwnProperty('onLine')) {
                         row.onLine = false;
                     }
                 });
+            });
+            //avoid showing coordinates and address of users not 
+            // actually connected in that room/trip
+            totalResult.forEach(function(row){
+                if(row.onLine === false){
+                    row.latitude = '0';
+                    row.longitude = '0';
+                    row.address = 'unknown';
+                }
             });
             callback(totalResult);
         });
