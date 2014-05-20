@@ -21,20 +21,7 @@ function chatHandler(ioSocket, eventLog, connection) {
                 socket.nickname = data.userId;
                 socket.join(data.travelId);
                 eventLog("CLIENT " + socket.id + " IP: " + address.address + " ID: " + data.userId + " has joined travel room with ID: " + data.travelId);
-                var clientsList = io.sockets.clients(data.travelId);
-                //list of current users on the room for update chat users status
-                var clientsOnLine = [];
-                clientsList.forEach(function(client) {
-                    clientsOnLine.push({id: client.nickname});
-                });
-                getUsersLocation(connection, eventLog, clientsOnLine, data.travelId, function(array) {
-                    if (array !== null) {
-                        io.sockets.in(data.travelId).emit('clientList', {result: 'OK', list: array});
-                        return;
-                    }
-                    io.sockets.in(data.travelId.emit('clientList', {result: 'DATABASE_ERROR'}));
-                });
-            });
+              });
         });
 
         socket.on('text', function(data) {
