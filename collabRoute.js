@@ -126,6 +126,30 @@ app.post('/add/travel/', function(req, res) {
     });
 });
 
+app.post('/add/routes/', function(req, res) {
+    res.type('application/json');
+    //need to create a separate connection for locking tables in race condition
+    var lockConnection = mysql.createConnection({
+        host: conf.dbHostname,
+        port: conf.dbPort,
+        user: conf.dbUser,
+        password: conf.dbPassword,
+        database: conf.dbName
+    });
+    queues(lockConnection, true);
+    lockConnection.connect();
+    checkHeaderToken(req, lockConnection, function(returnValue) {
+        if (!returnValue) {
+            res.json({type: 'add_new_routes', result: 'AUTH_FAILED'});
+            return;
+        }
+        travelList.addNewRoute(req, res, lockConnection, eventLog);
+        setTimeout(function() {
+            lockConnection.destroy();
+        }, 5000); //necessary delay, waiting to complete transaction
+    });
+});
+
 app.post('/delete/travel/', function(req, res) {
     res.type('application/json');
     checkHeaderToken(req, connection, function(returnValue) {
@@ -136,6 +160,7 @@ app.post('/delete/travel/', function(req, res) {
         travelList.deleteTravel(req, res, connection, eventLog);
     });
 });
+
 app.post('/update/coordinates/', function(req, res) {
     res.type('application/json');
     checkHeaderToken(req, connection, function(returnValue) {
