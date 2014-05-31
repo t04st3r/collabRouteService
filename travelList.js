@@ -174,7 +174,7 @@ function deleteTravel(req, res, connection, eventLog) {
         if (row[0].id_admin === parseInt(id)) {
             connection.query('DELETE FROM trip WHERE id =' + connection.escape(travelId), function(err) {
                 if (err) {
-                    eventLog('[ Database error on delete trip id:' + travelId + ' done by trip administrator with id: ' + travelId + ' ip: ' + ip + ' ]');
+                    eventLog('[ Database error on delete trip id:' + travelId + ' done by trip administrator with id: ' + id + ' ip: ' + ip + ' ]');
                     res.json({type: "delete_travel", result: "DATABASE_ERROR"});
                     return;
                 }
@@ -193,7 +193,7 @@ function deleteTravel(req, res, connection, eventLog) {
     });
 }
 
-function addNewRoute(req, res, connection, eventLog) {
+function addNewRoute(req, res, connection, eventLog, chat) {
     var id = req.headers.id;
     var ip = req.connection.remoteAddress;
     var jsonRequest = req.body;
@@ -207,45 +207,37 @@ function addNewRoute(req, res, connection, eventLog) {
             res.json({type: "add_new_routes", result: "DATABASE_ERROR"});
             return;
         }
-        transaction.query('SELECT MAX(id) AS maxId FROM route', function(err, row) {
+        var query = addRouteQueryBuilder(routesArray, travelId, id, connection);
+        if (query === null) {
+            eventLog('[ Database error on building route insert query on travel id: ' + travelId + ' done by user id: ' + id + ' ip: ' + ip + ' ]');
+            res.json({type: "add_new_routes", result: "DATABASE_ERROR"});
+            return;
+        }
+        transaction.query(query, function(err) {
             if (err) {
                 transaction.rollback();
-                eventLog('[ Database error on getting max route id on travel id: ' + travelId + ' done by user id: ' + id + ' ip: ' + ip + ' ]');
+                eventLog('[ Database error on inserting new routes on travel id: ' + travelId + ' done by user id: ' + id + ' ip: ' + ip + ' ]');
                 res.json({type: "add_new_routes", result: "DATABASE_ERROR"});
                 return;
             }
-            var maxRouteId = row[0].maxId;
-            var query = addRouteQueryBuilder(routesArray, travelId, id, connection);
-            if (query === null) {
-                eventLog('[ Database error on building route insert query on travel id: ' + travelId + ' done by user id: ' + id + ' ip: ' + ip + ' ]');
-                res.json({type: "add_new_routes", result: "DATABASE_ERROR"});
-                return;
-            }
-            transaction.query(query, function(err) {
+            transaction.query("SELECT id, longitude, latitude, id_user AS idUser, address, id_trip AS idTravel FROM route WHERE id_trip = " + connection.escape(travelId), function(err, rows) {
                 if (err) {
                     transaction.rollback();
-                    eventLog('[ Database error on inserting new routes on travel id: ' + travelId + ' done by user id: ' + id + ' ip: ' + ip + ' ]');
+                    eventLog('[ Database error on getting routes on travel id: ' + travelId + ' done by user id: ' + id + ' ip: ' + ip + ' ]');
                     res.json({type: "add_new_routes", result: "DATABASE_ERROR"});
                     return;
                 }
-                transaction.query("SELECT id, longitude, latitude FROM route WHERE id > " + connection.escape(maxRouteId), function(err, rows) {
+                transaction.query("UNLOCK TABLES", function(err) {
                     if (err) {
                         transaction.rollback();
-                        eventLog('[ Database error on getting brand new routes id on travel id: ' + travelId + ' done by user id: ' + id + ' ip: ' + ip + ' ]');
-                        res.json({type: "add_new_routes", result: "DATABASE_ERROR"});
+                        eventLog('[ Database error on unlock route table after inserting new routes on travel id: ' + travelId + ' done by user id: ' + id + ' ip: ' + ip + ' ]');
+                        res.json({type: "add_new_travel", result: "DATABASE_ERROR"});
                         return;
                     }
-                    transaction.query("UNLOCK TABLES", function(err) {
-                        if (err) {
-                            transaction.rollback();
-                            eventLog('[ Database error on unlock route table after inserting new routes on travel id: ' + travelId + ' done by user id: ' + id + ' ip: ' + ip + ' ]');
-                            res.json({type: "add_new_travel", result: "DATABASE_ERROR"});
-                            return;
-                        }
-                        transaction.commit();
-                        res.json({type: "add_new_routes", result: "OK", routes: rows});
-                        //TODO broadcast to all user connected new routes inserted using socket.io 
-                    });
+                    transaction.commit();
+                    res.json({type: "add_new_routes", result: "OK"});
+                    chat.sendRoutesListOnUpdate(travelId, rows);
+                    //TODO broadcast to all user connected new routes inserted using socket.io 
                 });
             });
         });
@@ -268,8 +260,44 @@ function addRouteQueryBuilder(array, travelId, userId, connection) {
     return null;
 }
 
+function deleteRoute(req, res, connection, chat, eventLog) {
+    var id = req.headers.id;
+    var ip = req.connection.remoteAddress;
+    var travelId = req.body.travelId;
+    var routeId = req.body.routeId;
+    connection.query('SELECT * FROM route WHERE id_trip = ' + connection.escape(travelId) + ' AND id = ' + connection.escape(routeId), function(err, row) {
+        if (err) {
+            eventLog('[ Database error on check route to delete route id: ' + routeId + ' request by id: ' + id + ' on travel id: ' + travelId + ' ip: ' + ip + ' ]');
+            res.json({type: "delete_route", result: "DATABASE_ERROR"});
+            return;
+        }
+        if (row.length !== 1) {
+            eventLog('[ Error route to delete not found route id: ' + routeId + ' request done by user id: ' + id + ' on travel id: ' + travelId + ' ip: ' + ip + ' ]');
+            res.json({type: "delete_route", result: "ROUTE_NOT_FOUND"});
+            return;
+        }
+        connection.query('DELETE FROM route WHERE id =' + connection.escape(travelId) + ' AND id_trip = ' + connection.escape(travelId), function(err) {
+            if (err) {
+                eventLog('[ Database error on delete route id:' + routeId + ' on trip id: ' + travelId + ' done by user with id: ' + travelId + ' ip: ' + ip + ' ]');
+                res.json({type: "delete_route", result: "DATABASE_ERROR"});
+                return;
+            }
+            connection.query("SELECT id, longitude, latitude, id_user AS idUser, address, id_trip AS idTravel FROM route WHERE id_trip = " + connection.escape(travelId), function(err, rows) {
+                if (err) {
+                    eventLog('[ Database error on getting routes on travel id: ' + travelId + ' done by user id: ' + id + ' ip: ' + ip + ' ]');
+                    res.json({type: "delete_routes", result: "DATABASE_ERROR"});
+                    return;
+                }
+                res.json({type: "delete_route", result: "OK"});
+                chat.sendRoutesListOnUpdate(travelId, rows);
+            });
+        });
+    });
+}
+
 module.exports.deleteTravel = deleteTravel;
 module.exports.addNewTravel = addNewTravel;
 module.exports.addNewRoute = addNewRoute;
 module.exports.sendTravelUsersList = sendTravelUsersList;
 module.exports.getRoutes = getRoutes;
+module.exports.deleteRoute = deleteRoute;

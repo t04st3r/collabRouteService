@@ -4,6 +4,7 @@
  * and open the template in the editor.
  */
 var io;
+
 function chatHandler(ioSocket, eventLog, connection) {
     io = ioSocket;
     io.set('log level', 1);
@@ -134,6 +135,15 @@ function sendListOnUpdate(travelId, userId, eventLog, connection, isDisconnectin
     });
 }
 
+function sendRoutesListOnUpdate(travelId, array){
+    if(array !== null){
+        io.sockets.in(travelId).emit('routesList', {result: 'OK', list: array});
+        
+            return;
+    }
+    io.sockets.in(travelId).emit('routesList', {result: 'DATABASE_ERROR'});
+}
 
 module.exports.chatHandler = chatHandler;
 module.exports.sendListOnUpdate = sendListOnUpdate;
+module.exports.sendRoutesListOnUpdate = sendRoutesListOnUpdate;

@@ -143,10 +143,21 @@ app.post('/add/routes/', function(req, res) {
             res.json({type: 'add_new_routes', result: 'AUTH_FAILED'});
             return;
         }
-        travelList.addNewRoute(req, res, lockConnection, eventLog);
+        travelList.addNewRoute(req, res, lockConnection, eventLog, chat);
         setTimeout(function() {
             lockConnection.destroy();
         }, 5000); //necessary delay, waiting to complete transaction
+    });
+});
+
+app.post('/delete/routes/', function(req, res) {
+    res.type('application/json');
+    checkHeaderToken(req, connection, function(returnValue) {
+        if (!returnValue) {
+            res.json({type: 'delete_route', result: 'AUTH_FAILED'});
+            return;
+        }
+        travelList.deleteRoute(req, res, connection, eventLog);
     });
 });
 
@@ -157,7 +168,7 @@ app.post('/delete/travel/', function(req, res) {
             res.json({type: 'leave_delete_travel', result: 'AUTH_FAILED'});
             return;
         }
-        travelList.deleteTravel(req, res, connection, eventLog);
+        travelList.deleteTravel(req, res, connection, chat, eventLog);
     });
 });
 
