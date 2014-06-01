@@ -15,7 +15,7 @@ function sendTravelUsersList(req, res, connection, eventLog) {
             eventLog('[ Database error on travel list request from ' + ip + 'where id: ' + id + ' is admin ]');
             return;
         }
-        query = 'SELECT trip.id, trip.name, trip.description, trip.id_admin, user_adm.name AS adm_name, user_adm.email AS adm_mail, user.name AS user_name, user.id AS user_id, user.email AS user_email FROM trip, user, user_trip, user AS user_adm WHERE user_adm.id = trip.id_admin AND trip.id = user_trip.id_trip AND user.id = user_trip.id_user AND user.id <> ' + connection.escape(id) + ' AND trip.id = ANY (SELECT user_trip.id_trip FROM user_trip WHERE user_trip.id_user = ' + connection.escape(id) + ')';
+        query = 'SELECT trip.id, trip.name, trip.description, trip.id_admin, user_adm.name AS adm_name, user_adm.email AS adm_mail, user.name AS user_name, user.id AS user_id, user.email AS user_email FROM trip, user, user_trip, user AS user_adm WHERE user_adm.id = trip.id_admin AND trip.id = user_trip.id_trip AND user.id = user_trip.id_user AND trip.id = ANY (SELECT user_trip.id_trip FROM user_trip WHERE user_trip.id_user = ' + connection.escape(id) + ')';
         options.sql = query;
         connection.query(options, function(err, rows) {
             if (err) {
@@ -237,7 +237,6 @@ function addNewRoute(req, res, connection, eventLog, chat) {
                     transaction.commit();
                     res.json({type: "add_new_routes", result: "OK"});
                     chat.sendRoutesListOnUpdate(travelId, rows);
-                    //TODO broadcast to all user connected new routes inserted using socket.io 
                 });
             });
         });
@@ -276,7 +275,7 @@ function deleteRoute(req, res, connection, chat, eventLog) {
             res.json({type: "delete_route", result: "ROUTE_NOT_FOUND"});
             return;
         }
-        connection.query('DELETE FROM route WHERE id =' + connection.escape(travelId) + ' AND id_trip = ' + connection.escape(travelId), function(err) {
+        connection.query('DELETE FROM route WHERE id =' + connection.escape(routeId) + ' AND id_trip = ' + connection.escape(travelId), function(err) {
             if (err) {
                 eventLog('[ Database error on delete route id:' + routeId + ' on trip id: ' + travelId + ' done by user with id: ' + travelId + ' ip: ' + ip + ' ]');
                 res.json({type: "delete_route", result: "DATABASE_ERROR"});

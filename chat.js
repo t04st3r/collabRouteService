@@ -22,7 +22,7 @@ function chatHandler(ioSocket, eventLog, connection) {
                 socket.nickname = data.userId;
                 socket.join(data.travelId);
                 eventLog("CLIENT " + socket.id + " IP: " + address.address + " ID: " + data.userId + " has joined travel room with ID: " + data.travelId);
-              });
+            });
         });
 
         socket.on('text', function(data) {
@@ -89,8 +89,8 @@ function getUsersLocation(connection, eventLog, clients, idTrip, callback) {
             });
             //avoid showing coordinates and address of users not 
             // actually connected in that room/trip
-            totalResult.forEach(function(row){
-                if(row.onLine === false){
+            totalResult.forEach(function(row) {
+                if (row.onLine === false) {
                     row.latitude = '0';
                     row.longitude = '0';
                     row.address = 'unknown';
@@ -135,11 +135,10 @@ function sendListOnUpdate(travelId, userId, eventLog, connection, isDisconnectin
     });
 }
 
-function sendRoutesListOnUpdate(travelId, array){
-    if(array !== null){
+function sendRoutesListOnUpdate(travelId, array) {
+    if (array !== null) {
         io.sockets.in(travelId).emit('routesList', {result: 'OK', list: array});
-        
-            return;
+        return;
     }
     io.sockets.in(travelId).emit('routesList', {result: 'DATABASE_ERROR'});
 }

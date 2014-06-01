@@ -157,7 +157,7 @@ app.post('/delete/routes/', function(req, res) {
             res.json({type: 'delete_route', result: 'AUTH_FAILED'});
             return;
         }
-        travelList.deleteRoute(req, res, connection, eventLog);
+        travelList.deleteRoute(req, res, connection, chat, eventLog);
     });
 });
 
