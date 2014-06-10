@@ -8,7 +8,8 @@ function checkSendRegister(req, res, connection, eventLog, transport) {
     var name = req.body.name;
     var pass = req.body.pass;
     var ip = req.connection.remoteAddress;
-    connection.query('SELECT id FROM user WHERE email = ' + connection.escape(mailAddress), function(err, result) {
+    var transaction = connection.startTransaction();
+    transaction.query('SELECT id FROM user WHERE email = ' + connection.escape(mailAddress), function(err, result) {
         res.type('application/json');
         if (err) {
             res.json({type: 'request', result: 'DATABASE_ERROR'});
@@ -23,8 +24,9 @@ function checkSendRegister(req, res, connection, eventLog, transport) {
         if (result.length === 0) {
             var code = Math.floor((Math.random() * 10000) + 1);
             code = code < 1000 ? code + 1000 : code;
-            connection.query('INSERT INTO user (email, name, password, code) VALUES (' + connection.escape(mailAddress) + ', ' + connection.escape(name) + ', ' + connection.escape(pass) + ',' + code + ')', function(err) {
+            transaction.query('INSERT INTO user (email, name, password, code) VALUES (' + connection.escape(mailAddress) + ', ' + connection.escape(name) + ', ' + connection.escape(pass) + ',' + code + ')', function(err) {
                 if (err) {
+                    transaction.rollback();
                     res.json({type: 'request', result: 'DATABASE_ERROR'});
                     eventLog('[ Database error on inserting new user from ' + ip + ' mail: ' + mailAddress + ' ]');
                     return;
@@ -37,31 +39,36 @@ function checkSendRegister(req, res, connection, eventLog, transport) {
                             "<h4>Just a few minutes and you will complete your registration</h4>" +
                             "<p>go back to the app and insert the following code: <strong>" + code + "</strong></p>"
                 };
-                transport.sendMail(mailOptions, function(err, response) {
-                    if (err) {
-                        eventLog(err);
-                        res.json({type: 'request', result: 'EMAIL_SEND_ERROR'});
-                        connection.query('DELETE FROM user WHERE email = ' + connection.escape(mailAddress), function(err, res) {
-                            if (err) {
-                                eventLog('Possible DB data inconsistency on delete new user with email address ' + mailAddress + ' please check it manually error: ' + err);
-                                return;
-                            }
-                        });
+                sendMail(transport, mailOptions, function(resultValue) {
+                    if (!resultValue) {
+                        transaction.rollback();
                         return;
                     }
-                    eventLog("Confirmation mail sent to new user: " + name + " (" + ip + "): " + response.message);
-                    res.json({type: 'request', result: 'OK', code: code});
                 });
+                eventLog("Confirmation mail sent to new user: " + name + " (" + ip + ")");
+                res.json({type: 'request', result: 'OK', code: code});
+                transaction.commit();
             });
         }
     });
+    transaction.execute();
 }
 
+function sendMail(transport, mailOptions, callback) {
+    transport.sendMail(mailOptions, function(err) {
+        if (err) {
+            eventLog(err);
+            res.json({type: 'request', result: 'EMAIL_SEND_ERROR'});
+            callback(false);
+        }
+        callback(true);
+    });
+}
 function confirmRegistration(req, res, connection, eventLog) {
     var mail = req.body.mail;
     var ip = req.connection.remoteAddress;
     res.type('application/json');
-    connection.query('SELECT confirmed, name, id FROM user WHERE email = ' + connection.escape(mail)+' AND confirmed = 0', function(err, result) {
+    connection.query('SELECT confirmed, name, id FROM user WHERE email = ' + connection.escape(mail) + ' AND confirmed = 0', function(err, result) {
         if (err) {
             eventLog('Database Error on checking new user with mail ' + mail + ' (' + ip + ') error: ' + err);
             res.json({type: 'confirm', result: 'DATABASE_ERROR'});
