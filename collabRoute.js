@@ -83,6 +83,17 @@ app.get('/auth/:mail/:pass', function(req, res) {
     login.doLogin(res, req, crypto, connection, eventLog, transport);
 });
 
+app.post('/auth/recovery/:mail', function(req, res){
+    res.type('application/json');
+    registration.checkRecoveryRequest(req, res, connection, eventLog, transport);
+});
+
+app.post('/auth/update', function(req, res){
+    res.type('application/json');
+    registration.confirmRecoverySetNewPasswd(req, res, connection, eventLog);
+});
+
+
 app.post('/add/user/', function(req, res) {
     registration.checkSendRegister(req, res, connection, eventLog, transport);
 });
