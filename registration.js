@@ -150,7 +150,6 @@ function confirmRecoverySetNewPasswd(req, res, connection, eventLog) {
     var code = req.body.code;
     var mail = req.body.mail;
     var ip = req.connection.remoteAddress;
-    eventLog(passwd+" "+code+" "+mail);
     connection.query("SELECT code FROM user WHERE email =" + connection.escape(mail), function(err, row) {
         if (err) {
             res.json({type: "password_recovery", result: "DATABASE_ERROR"});
@@ -162,7 +161,6 @@ function confirmRecoverySetNewPasswd(req, res, connection, eventLog) {
             res.json({type: 'password_recovery', result: 'EMAIL_NOT_FOUND'});
             return;
         }
-        eventLog(row[0].code);
         if (row[0].code !== code) {
             eventLog('[ Wrong verification code on setting new password done by user with with mail ' + mail + ' (' + ip + ') ]');
             res.json({type: 'password_recovery', result: 'WRONG_CODE'});
