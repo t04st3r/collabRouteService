@@ -83,12 +83,12 @@ app.get('/auth/:mail/:pass', function(req, res) {
     login.doLogin(res, req, crypto, connection, eventLog, transport);
 });
 
-app.post('/auth/recovery/:mail', function(req, res){
+app.get('/recovery/:mail', function(req, res){
     res.type('application/json');
     registration.checkRecoveryRequest(req, res, connection, eventLog, transport);
 });
 
-app.post('/auth/update', function(req, res){
+app.put('/recovery/update', function(req, res){
     res.type('application/json');
     registration.confirmRecoverySetNewPasswd(req, res, connection, eventLog);
 });
@@ -98,7 +98,7 @@ app.post('/add/user/', function(req, res) {
     registration.checkSendRegister(req, res, connection, eventLog, transport);
 });
 
-app.post('/confirm/user', function(req, res) {
+app.put('/confirm/user', function(req, res) {
     registration.confirmRegistration(req, res, connection, eventLog);
 });
 
@@ -161,7 +161,7 @@ app.post('/add/routes/', function(req, res) {
     });
 });
 
-app.post('/delete/routes/', function(req, res) {
+app.delete('/delete/routes/:routeId/:travelId', function(req, res) {
     res.type('application/json');
     checkHeaderToken(req, connection, function(returnValue) {
         if (!returnValue) {
@@ -172,7 +172,7 @@ app.post('/delete/routes/', function(req, res) {
     });
 });
 
-app.post('/delete/travel/', function(req, res) {
+app.delete('/delete/travel/:travelId', function(req, res) {
     res.type('application/json');
     checkHeaderToken(req, connection, function(returnValue) {
         if (!returnValue) {
@@ -183,7 +183,7 @@ app.post('/delete/travel/', function(req, res) {
     });
 });
 
-app.post('/update/coordinates/', function(req, res) {
+app.put('/update/coordinates/', function(req, res) {
     res.type('application/json');
     checkHeaderToken(req, connection, function(returnValue) {
         if (!returnValue) {

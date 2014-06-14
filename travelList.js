@@ -164,7 +164,7 @@ function buildUsersMultipleInsertQuery(array, travelId) {
 function deleteTravel(req, res, connection, eventLog) {
     var id = req.headers.id;
     var ip = req.connection.remoteAddress;
-    var travelId = req.body.travelId;
+    var travelId = req.params.travelId;
     connection.query('SELECT id_admin FROM trip WHERE id = ' + connection.escape(travelId), function(err, row) {
         if (err || row.length === 0) {
             eventLog('[ Database error on check trip administrator with given id: ' + id + ' on travel id: ' + travelId + ' ip: ' + ip + ' ]');
@@ -262,8 +262,9 @@ function addRouteQueryBuilder(array, travelId, userId, connection) {
 function deleteRoute(req, res, connection, chat, eventLog) {
     var id = req.headers.id;
     var ip = req.connection.remoteAddress;
-    var travelId = req.body.travelId;
-    var routeId = req.body.routeId;
+    var travelId = req.params.travelId;
+    var routeId = req.params.routeId;
+    ;
     connection.query('SELECT * FROM route WHERE id_trip = ' + connection.escape(travelId) + ' AND id = ' + connection.escape(routeId), function(err, row) {
         if (err) {
             eventLog('[ Database error on check route to delete route id: ' + routeId + ' request by id: ' + id + ' on travel id: ' + travelId + ' ip: ' + ip + ' ]');
