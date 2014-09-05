@@ -14,11 +14,13 @@ function checkSendRegister(req, res, connection, eventLog, transport) {
         if (err) {
             res.json({type: 'request', result: 'DATABASE_ERROR'});
             eventLog('[ Database error on email checking request from ' + ip + ' mail: ' + mailAddress + ' ]');
+            transaction.rollback();
             return;
         }
         if (result.length >= 1) {
             res.json({type: 'request', result: 'EMAIL_EXISTS_ERROR'});
             eventLog('[ Mail address already in the DB  request from ' + ip + ' mail: ' + mailAddress + ' ]');
+            transaction.rollback();
             return;
         }
         if (result.length === 0) {

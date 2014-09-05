@@ -264,7 +264,6 @@ function deleteRoute(req, res, connection, chat, eventLog) {
     var ip = req.connection.remoteAddress;
     var travelId = req.params.travelId;
     var routeId = req.params.routeId;
-    ;
     connection.query('SELECT * FROM route WHERE id_trip = ' + connection.escape(travelId) + ' AND id = ' + connection.escape(routeId), function(err, row) {
         if (err) {
             eventLog('[ Database error on check route to delete route id: ' + routeId + ' request by id: ' + id + ' on travel id: ' + travelId + ' ip: ' + ip + ' ]');
